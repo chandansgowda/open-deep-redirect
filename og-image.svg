@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <linearGradient id="markGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#7c5cff"/>
+      <stop offset="100%" stop-color="#22d3ee"/>
+    </linearGradient>
+    <linearGradient id="textGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#7c5cff"/>
+      <stop offset="100%" stop-color="#22d3ee"/>
+    </linearGradient>
+    <radialGradient id="glow1" cx="85%" cy="15%" r="55%">
+      <stop offset="0%" stop-color="#7c5cff" stop-opacity="0.32"/>
+      <stop offset="100%" stop-color="#7c5cff" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glow2" cx="12%" cy="88%" r="55%">
+      <stop offset="0%" stop-color="#22d3ee" stop-opacity="0.24"/>
+      <stop offset="100%" stop-color="#22d3ee" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="#0b0d12"/>
+  <rect width="1200" height="630" fill="url(#glow1)"/>
+  <rect width="1200" height="630" fill="url(#glow2)"/>
+
+  <g transform="translate(80, 70)">
+    <rect x="0" y="0" width="92" height="92" rx="20" fill="url(#markGrad)"/>
+    <path d="M 28 64 L 66 26 M 34 26 L 66 26 L 66 58"
+          stroke="white" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  </g>
+
+  <text x="196" y="132" font-family="Helvetica Neue, Helvetica, Arial, sans-serif"
+        font-size="38" font-weight="700" fill="#e7ebf3" letter-spacing="-1">
+    Open Deep Redirect
+  </text>
+
+  <text x="80" y="320" font-family="Georgia, Times, serif" font-size="88" fill="#e7ebf3">
+    Turn a link into a
+  </text>
+  <text x="80" y="430" font-family="Georgia, Times, serif" font-size="88" font-style="italic" fill="url(#textGrad)">
+    native-app link.
+  </text>
+
+  <text x="80" y="555" font-family="Helvetica Neue, Helvetica, Arial, sans-serif"
+        font-size="24" fill="#8b93a7" letter-spacing="0.5">
+    No tracking  ·  No backend  ·  Open source
+  </text>
+</svg>
