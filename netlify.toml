@@ -1,0 +1,36 @@
+# Netlify configuration for Open Deep Redirect.
+# Static site — no build step required. Netlify just publishes the repo root.
+
+[build]
+  publish = "."
+  command = ""
+
+# Rewrite /r/{platform}/{id...} to index.html so client-side routing handles it.
+# Netlify serves real files (index.html, platforms.json, etc.) before applying rewrites,
+# so these rules never shadow your static assets.
+[[redirects]]
+  from   = "/r/*"
+  to     = "/index.html"
+  status = 200
+
+# Sensible defaults for a zero-tracking, zero-backend redirector.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options   = "nosniff"
+    X-Frame-Options          = "DENY"
+    Referrer-Policy          = "strict-origin-when-cross-origin"
+    Permissions-Policy       = "interest-cohort=(), browsing-topics=()"
+
+# Never cache the shell — updates go live immediately.
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "no-cache, must-revalidate"
+
+# Don't cache the config either — editing platforms.json should take effect on next load.
+[[headers]]
+  for = "/platforms.json"
+  [headers.values]
+    Cache-Control = "no-cache, must-revalidate"
+    Content-Type  = "application/json; charset=utf-8"

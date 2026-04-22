@@ -1,0 +1,405 @@
+{
+  "version": 1,
+  "platforms": {
+    "youtube": {
+      "name": "YouTube",
+      "kind": "Video",
+      "icon": "▶",
+      "color": "#FF0000",
+      "domains": ["youtube.com", "youtu.be", "m.youtube.com", "music.youtube.com", "www.youtube.com"],
+      "extractors": [
+        "youtu\\.be/([\\w-]{11})",
+        "youtube\\.com/shorts/([\\w-]{11})",
+        "youtube\\.com/embed/([\\w-]{11})",
+        "youtube\\.com/live/([\\w-]{11})",
+        "[?&]v=([\\w-]{11})"
+      ],
+      "idValidator": "^[\\w-]{11}$",
+      "deepLink": "youtube://watch?v={id}",
+      "webLink": "https://www.youtube.com/watch?v={id}"
+    },
+    "youtube-playlist": {
+      "name": "YouTube",
+      "kind": "Playlist",
+      "icon": "▶",
+      "color": "#FF0000",
+      "domains": ["youtube.com", "m.youtube.com", "music.youtube.com", "www.youtube.com"],
+      "extractors": [
+        "[?&]list=([\\w-]+)"
+      ],
+      "idValidator": "^[\\w-]+$",
+      "deepLink": "youtube://playlist?list={id}",
+      "webLink": "https://www.youtube.com/playlist?list={id}"
+    },
+    "x-status": {
+      "name": "X / Twitter",
+      "kind": "Post",
+      "icon": "𝕏",
+      "color": "#000000",
+      "domains": ["twitter.com", "x.com", "mobile.twitter.com", "mobile.x.com", "www.twitter.com", "www.x.com"],
+      "extractors": [
+        "(?:twitter|x)\\.com/(?:#!/)?[^/]+/status(?:es)?/(\\d+)",
+        "(?:twitter|x)\\.com/i/web/status/(\\d+)"
+      ],
+      "idValidator": "^\\d+$",
+      "deepLink": "twitter://status?id={id}",
+      "webLink": "https://x.com/i/status/{id}"
+    },
+    "x-user": {
+      "name": "X / Twitter",
+      "kind": "Profile",
+      "icon": "𝕏",
+      "color": "#000000",
+      "domains": ["twitter.com", "x.com", "mobile.twitter.com", "mobile.x.com", "www.twitter.com", "www.x.com"],
+      "extractors": [
+        "^https?://(?:www\\.|mobile\\.)?(?:twitter|x)\\.com/(?!i/|home|explore|notifications|messages|settings|search|compose|tos|privacy|login|signup)([A-Za-z0-9_]{1,15})/?(?:[?#].*)?$"
+      ],
+      "idValidator": "^[A-Za-z0-9_]{1,15}$",
+      "deepLink": "twitter://user?screen_name={id}",
+      "webLink": "https://x.com/{id}"
+    },
+    "instagram-post": {
+      "name": "Instagram",
+      "kind": "Post / Reel",
+      "icon": "◉",
+      "color": "#E4405F",
+      "domains": ["instagram.com", "www.instagram.com", "m.instagram.com"],
+      "extractors": [
+        "instagram\\.com/(?:p|reel|reels|tv)/([\\w-]+)"
+      ],
+      "idValidator": "^[\\w-]+$",
+      "deepLink": "instagram://media?shortcode={id}",
+      "webLink": "https://www.instagram.com/p/{id}/"
+    },
+    "instagram-profile": {
+      "name": "Instagram",
+      "kind": "Profile",
+      "icon": "◉",
+      "color": "#E4405F",
+      "domains": ["instagram.com", "www.instagram.com", "m.instagram.com"],
+      "extractors": [
+        "^https?://(?:www\\.|m\\.)?instagram\\.com/([A-Za-z0-9_.]{1,30})/?(?:[?#].*)?$"
+      ],
+      "idValidator": "^[A-Za-z0-9_.]{1,30}$",
+      "deepLink": "instagram://user?username={id}",
+      "webLink": "https://www.instagram.com/{id}/"
+    },
+    "spotify-track": {
+      "name": "Spotify",
+      "kind": "Track",
+      "icon": "♪",
+      "color": "#1DB954",
+      "domains": ["open.spotify.com", "spotify.com"],
+      "extractors": [
+        "spotify\\.com/(?:intl-[a-z]{2}/)?track/([A-Za-z0-9]+)"
+      ],
+      "idValidator": "^[A-Za-z0-9]+$",
+      "deepLink": "spotify:track:{id}",
+      "webLink": "https://open.spotify.com/track/{id}"
+    },
+    "spotify-album": {
+      "name": "Spotify",
+      "kind": "Album",
+      "icon": "♪",
+      "color": "#1DB954",
+      "domains": ["open.spotify.com", "spotify.com"],
+      "extractors": [
+        "spotify\\.com/(?:intl-[a-z]{2}/)?album/([A-Za-z0-9]+)"
+      ],
+      "idValidator": "^[A-Za-z0-9]+$",
+      "deepLink": "spotify:album:{id}",
+      "webLink": "https://open.spotify.com/album/{id}"
+    },
+    "spotify-playlist": {
+      "name": "Spotify",
+      "kind": "Playlist",
+      "icon": "♪",
+      "color": "#1DB954",
+      "domains": ["open.spotify.com", "spotify.com"],
+      "extractors": [
+        "spotify\\.com/(?:intl-[a-z]{2}/)?playlist/([A-Za-z0-9]+)"
+      ],
+      "idValidator": "^[A-Za-z0-9]+$",
+      "deepLink": "spotify:playlist:{id}",
+      "webLink": "https://open.spotify.com/playlist/{id}"
+    },
+    "spotify-artist": {
+      "name": "Spotify",
+      "kind": "Artist",
+      "icon": "♪",
+      "color": "#1DB954",
+      "domains": ["open.spotify.com", "spotify.com"],
+      "extractors": [
+        "spotify\\.com/(?:intl-[a-z]{2}/)?artist/([A-Za-z0-9]+)"
+      ],
+      "idValidator": "^[A-Za-z0-9]+$",
+      "deepLink": "spotify:artist:{id}",
+      "webLink": "https://open.spotify.com/artist/{id}"
+    },
+    "spotify-episode": {
+      "name": "Spotify",
+      "kind": "Podcast Episode",
+      "icon": "♪",
+      "color": "#1DB954",
+      "domains": ["open.spotify.com", "spotify.com"],
+      "extractors": [
+        "spotify\\.com/(?:intl-[a-z]{2}/)?episode/([A-Za-z0-9]+)"
+      ],
+      "idValidator": "^[A-Za-z0-9]+$",
+      "deepLink": "spotify:episode:{id}",
+      "webLink": "https://open.spotify.com/episode/{id}"
+    },
+    "spotify-show": {
+      "name": "Spotify",
+      "kind": "Podcast Show",
+      "icon": "♪",
+      "color": "#1DB954",
+      "domains": ["open.spotify.com", "spotify.com"],
+      "extractors": [
+        "spotify\\.com/(?:intl-[a-z]{2}/)?show/([A-Za-z0-9]+)"
+      ],
+      "idValidator": "^[A-Za-z0-9]+$",
+      "deepLink": "spotify:show:{id}",
+      "webLink": "https://open.spotify.com/show/{id}"
+    },
+    "tiktok-video": {
+      "name": "TikTok",
+      "kind": "Video",
+      "icon": "♫",
+      "color": "#FE2C55",
+      "domains": ["tiktok.com", "www.tiktok.com", "m.tiktok.com"],
+      "extractors": [
+        "tiktok\\.com/@[\\w.-]+/video/(\\d+)",
+        "tiktok\\.com/v/(\\d+)"
+      ],
+      "idValidator": "^\\d+$",
+      "deepLink": "snssdk1233://aweme/detail/{id}",
+      "webLink": "https://www.tiktok.com/embed/v2/{id}"
+    },
+    "twitch-channel": {
+      "name": "Twitch",
+      "kind": "Channel",
+      "icon": "◈",
+      "color": "#9146FF",
+      "domains": ["twitch.tv", "www.twitch.tv", "m.twitch.tv"],
+      "extractors": [
+        "^https?://(?:www\\.|m\\.)?twitch\\.tv/(?!videos|directory|p/|subscriptions|inventory|wallet|settings)([A-Za-z0-9_]{3,25})/?(?:[?#].*)?$"
+      ],
+      "idValidator": "^[A-Za-z0-9_]{3,25}$",
+      "deepLink": "twitch://stream/{id}",
+      "webLink": "https://www.twitch.tv/{id}"
+    },
+    "reddit-post": {
+      "name": "Reddit",
+      "kind": "Post",
+      "icon": "⊛",
+      "color": "#FF4500",
+      "domains": ["reddit.com", "www.reddit.com", "old.reddit.com", "new.reddit.com", "m.reddit.com"],
+      "extractors": [
+        "reddit\\.com/r/([\\w-]+/comments/[a-z0-9]+)"
+      ],
+      "idValidator": "^[\\w-]+/comments/[a-z0-9]+$",
+      "deepLink": "https://www.reddit.com/r/{id}/",
+      "webLink": "https://www.reddit.com/r/{id}/"
+    },
+    "reddit-subreddit": {
+      "name": "Reddit",
+      "kind": "Subreddit",
+      "icon": "⊛",
+      "color": "#FF4500",
+      "domains": ["reddit.com", "www.reddit.com", "old.reddit.com", "new.reddit.com", "m.reddit.com"],
+      "extractors": [
+        "^https?://(?:www\\.|old\\.|new\\.|m\\.)?reddit\\.com/r/([\\w-]+)/?(?:[?#].*)?$"
+      ],
+      "idValidator": "^[\\w-]+$",
+      "deepLink": "https://www.reddit.com/r/{id}/",
+      "webLink": "https://www.reddit.com/r/{id}/"
+    },
+    "linkedin-profile": {
+      "name": "LinkedIn",
+      "kind": "Profile",
+      "icon": "in",
+      "color": "#0A66C2",
+      "domains": ["linkedin.com", "www.linkedin.com", "m.linkedin.com"],
+      "extractors": [
+        "linkedin\\.com/in/([A-Za-z0-9_-]+)"
+      ],
+      "idValidator": "^[A-Za-z0-9_-]+$",
+      "deepLink": "linkedin://in/{id}",
+      "webLink": "https://www.linkedin.com/in/{id}/"
+    },
+    "linkedin-company": {
+      "name": "LinkedIn",
+      "kind": "Company",
+      "icon": "in",
+      "color": "#0A66C2",
+      "domains": ["linkedin.com", "www.linkedin.com", "m.linkedin.com"],
+      "extractors": [
+        "linkedin\\.com/company/([A-Za-z0-9_-]+)"
+      ],
+      "idValidator": "^[A-Za-z0-9_-]+$",
+      "deepLink": "linkedin://company/{id}",
+      "webLink": "https://www.linkedin.com/company/{id}/"
+    },
+    "pinterest-pin": {
+      "name": "Pinterest",
+      "kind": "Pin",
+      "icon": "◉",
+      "color": "#E60023",
+      "domains": ["pinterest.com", "www.pinterest.com", "pin.it"],
+      "extractors": [
+        "pinterest\\.com/pin/(\\d+)"
+      ],
+      "idValidator": "^\\d+$",
+      "deepLink": "pinterest://pin/{id}",
+      "webLink": "https://www.pinterest.com/pin/{id}/"
+    },
+    "telegram": {
+      "name": "Telegram",
+      "kind": "Channel / User",
+      "icon": "✈",
+      "color": "#26A5E4",
+      "domains": ["t.me", "telegram.me"],
+      "extractors": [
+        "^https?://(?:t|telegram)\\.me/([A-Za-z0-9_]{4,})/?(?:[?#].*)?$"
+      ],
+      "idValidator": "^[A-Za-z0-9_]+$",
+      "deepLink": "tg://resolve?domain={id}",
+      "webLink": "https://t.me/{id}"
+    },
+    "whatsapp": {
+      "name": "WhatsApp",
+      "kind": "Chat",
+      "icon": "✆",
+      "color": "#25D366",
+      "domains": ["wa.me", "api.whatsapp.com", "chat.whatsapp.com"],
+      "extractors": [
+        "wa\\.me/(\\+?\\d+)",
+        "api\\.whatsapp\\.com/send.*?[?&]phone=(\\+?\\d+)"
+      ],
+      "idValidator": "^\\+?\\d+$",
+      "deepLink": "whatsapp://send?phone={id}",
+      "webLink": "https://wa.me/{id}"
+    },
+    "github-repo": {
+      "name": "GitHub",
+      "kind": "Repository",
+      "icon": "◎",
+      "color": "#24292F",
+      "domains": ["github.com", "www.github.com"],
+      "extractors": [
+        "^https?://(?:www\\.)?github\\.com/([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)/?(?:[?#].*)?$"
+      ],
+      "idValidator": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$",
+      "deepLink": "https://github.com/{id}",
+      "webLink": "https://github.com/{id}"
+    },
+    "maps-place": {
+      "name": "Maps",
+      "kind": "Place",
+      "icon": "◎",
+      "color": "#1A73E8",
+      "domains": ["maps.google.com", "goo.gl", "maps.app.goo.gl", "google.com"],
+      "extractors": [
+        "google\\.com/maps/place/([^/?#]+)",
+        "maps\\.app\\.goo\\.gl/([\\w-]+)"
+      ],
+      "idValidator": "^[^/\\s]+$",
+      "deepLink": "comgooglemaps://?q={id}",
+      "webLink": "https://www.google.com/maps/search/?api=1&query={id}"
+    },
+    "apple-music-song": {
+      "name": "Apple Music",
+      "kind": "Song",
+      "icon": "♫",
+      "color": "#FA2D48",
+      "domains": ["music.apple.com"],
+      "extractors": [
+        "music\\.apple\\.com/[a-z]{2}/album/[^/]+/\\d+\\?(?:[^#]*&)?i=(\\d+)",
+        "music\\.apple\\.com/[a-z]{2}/song/[^/]+/(\\d+)"
+      ],
+      "idValidator": "^\\d+$",
+      "deepLink": "music://music.apple.com/song/{id}",
+      "webLink": "https://music.apple.com/song/{id}"
+    },
+    "apple-music-album": {
+      "name": "Apple Music",
+      "kind": "Album",
+      "icon": "♫",
+      "color": "#FA2D48",
+      "domains": ["music.apple.com"],
+      "extractors": [
+        "music\\.apple\\.com/[a-z]{2}/album/[^/]+/(\\d+)(?:$|[/?#])"
+      ],
+      "idValidator": "^\\d+$",
+      "deepLink": "music://music.apple.com/album/{id}",
+      "webLink": "https://music.apple.com/album/{id}"
+    },
+    "apple-music-playlist": {
+      "name": "Apple Music",
+      "kind": "Playlist",
+      "icon": "♫",
+      "color": "#FA2D48",
+      "domains": ["music.apple.com"],
+      "extractors": [
+        "music\\.apple\\.com/[a-z]{2}/playlist/[^/]+/(pl\\.[A-Za-z0-9.-]+)"
+      ],
+      "idValidator": "^pl\\.[A-Za-z0-9.-]+$",
+      "deepLink": "music://music.apple.com/playlist/{id}",
+      "webLink": "https://music.apple.com/playlist/{id}"
+    },
+    "apple-music-artist": {
+      "name": "Apple Music",
+      "kind": "Artist",
+      "icon": "♫",
+      "color": "#FA2D48",
+      "domains": ["music.apple.com"],
+      "extractors": [
+        "music\\.apple\\.com/[a-z]{2}/artist/[^/]+/(\\d+)"
+      ],
+      "idValidator": "^\\d+$",
+      "deepLink": "music://music.apple.com/artist/{id}",
+      "webLink": "https://music.apple.com/artist/{id}"
+    },
+    "vimeo-video": {
+      "name": "Vimeo",
+      "kind": "Video",
+      "icon": "▷",
+      "color": "#1AB7EA",
+      "domains": ["vimeo.com", "www.vimeo.com", "player.vimeo.com"],
+      "extractors": [
+        "vimeo\\.com/(?:video/)?(\\d+)"
+      ],
+      "idValidator": "^\\d+$",
+      "deepLink": "vimeo://app.vimeo.com/videos/{id}",
+      "webLink": "https://vimeo.com/{id}"
+    },
+    "threads-post": {
+      "name": "Threads",
+      "kind": "Post",
+      "icon": "@",
+      "color": "#000000",
+      "domains": ["threads.net", "www.threads.net"],
+      "extractors": [
+        "threads\\.net/@[\\w.]+/post/([\\w-]+)"
+      ],
+      "idValidator": "^[\\w-]+$",
+      "deepLink": "barcelona://post/{id}",
+      "webLink": "https://www.threads.net/post/{id}"
+    },
+    "discord-invite": {
+      "name": "Discord",
+      "kind": "Invite",
+      "icon": "◆",
+      "color": "#5865F2",
+      "domains": ["discord.gg", "discord.com", "www.discord.com", "discordapp.com"],
+      "extractors": [
+        "discord\\.gg/([\\w-]+)",
+        "discord(?:app)?\\.com/invite/([\\w-]+)"
+      ],
+      "idValidator": "^[\\w-]+$",
+      "deepLink": "discord://invite/{id}",
+      "webLink": "https://discord.gg/{id}"
+    }
+  }
+}

@@ -1,0 +1,954 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#0b0d12" />
+  <meta name="color-scheme" content="dark light" />
+  <title>Open Deep Redirect</title>
+  <meta name="description" content="Generate clean redirect links that open content directly in native apps, with a reliable web fallback." />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ctext y='50' font-size='52'%3E%E2%86%97%3C/text%3E%3C/svg%3E" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" />
+
+  <style>
+    :root {
+      --bg: #0b0d12;
+      --bg-2: #11141c;
+      --surface: #161a24;
+      --surface-2: #1d2230;
+      --border: #262c3a;
+      --text: #e7ebf3;
+      --text-muted: #8b93a7;
+      --accent: #7c5cff;
+      --accent-2: #22d3ee;
+      --success: #22c55e;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --radius: 14px;
+      --radius-sm: 10px;
+      --shadow: 0 10px 30px rgba(0,0,0,0.35);
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #f6f7fb;
+        --bg-2: #eef0f6;
+        --surface: #ffffff;
+        --surface-2: #f3f5fa;
+        --border: #e3e6ee;
+        --text: #0f1220;
+        --text-muted: #5b6478;
+        --shadow: 0 10px 30px rgba(17, 24, 39, 0.08);
+      }
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      font-feature-settings: "ss01", "cv11";
+      font-size: 15px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: -20% -20% auto auto;
+      width: 60vmax;
+      height: 60vmax;
+      background: radial-gradient(closest-side, rgba(124,92,255,0.25), transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+    body::after {
+      content: "";
+      position: fixed;
+      inset: auto auto -20% -20%;
+      width: 55vmax;
+      height: 55vmax;
+      background: radial-gradient(closest-side, rgba(34,211,238,0.18), transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .app { position: relative; z-index: 1; min-height: 100%; display: flex; flex-direction: column; }
+    .container { width: 100%; max-width: 720px; margin: 0 auto; padding: 24px; }
+
+    header.topbar {
+      display: flex; align-items: center; justify-content: center;
+      padding: 20px 24px; max-width: 1100px; margin: 0 auto; width: 100%;
+    }
+    .brand {
+      display: inline-flex; align-items: center;
+      gap: 0.6em;
+      font-weight: 700; letter-spacing: -0.015em;
+      color: var(--text); text-decoration: none;
+      /* One size knob drives both the logo and the wordmark. */
+      font-size: clamp(1.6rem, 7vw, 1.9rem);
+      line-height: 1;
+      transition: opacity .15s;
+    }
+    .brand:hover { opacity: 0.9; }
+    .brand:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 6px; }
+    .brand .mark {
+      width: 1.8em; height: 1.8em;
+      display: grid; place-items: center;
+      border-radius: 0.32em;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      color: white;
+      font-size: 1.05em; font-weight: 800;
+      flex-shrink: 0;
+      box-shadow: 0 6px 18px rgba(124, 92, 255, 0.25);
+    }
+    .brand .name { font-size: 1em; white-space: nowrap; }
+    /* legacy bits no longer in markup — kept for safety */
+    .brand .dot, .brand .sub { display: none; }
+
+    main { flex: 1; display: flex; align-items: flex-start; justify-content: center; padding-top: clamp(24px, 6vh, 72px); }
+
+    .hero { text-align: center; padding: 20px 0 28px; }
+    .hero h1 {
+      font-family: "Instrument Serif", "Iowan Old Style", "Apple Garamond", Georgia, "Times New Roman", serif;
+      font-weight: 400;
+      font-size: clamp(34px, 6.4vw, 52px);
+      letter-spacing: -0.01em;
+      margin: 0 0 10px;
+      line-height: 1.1;
+      /* Prefer balanced line breaks on supporting browsers (Chrome 114+,
+         Safari 17.5+, Firefox 121+). Falls back to normal wrapping. */
+      text-wrap: balance;
+    }
+    .hero h1 .grad {
+      font-style: italic;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+      /* Keep the gradient phrase together so it never breaks mid-phrase.
+         Combined with text-wrap: balance above, narrow viewports get a
+         clean two-line layout: "Turn a link into a" / "native-app link". */
+      white-space: nowrap;
+    }
+    .hero p { text-wrap: pretty; }
+    .hero p { color: var(--text-muted); margin: 0 auto; max-width: 520px; }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 20px;
+    }
+    .card + .card { margin-top: 16px; }
+
+    .field { display: flex; gap: 10px; align-items: stretch; }
+    .input, .btn, .select {
+      font: inherit;
+      color: var(--text);
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      outline: none;
+      transition: border-color .15s, box-shadow .15s, background .15s, transform .05s;
+    }
+    .input {
+      flex: 1;
+      min-width: 0;
+    }
+    .input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(124,92,255,0.2); }
+    .btn {
+      cursor: pointer;
+      background: linear-gradient(180deg, var(--accent), #6a4ae6);
+      color: white; border: 1px solid transparent; font-weight: 600;
+      white-space: nowrap;
+    }
+    .btn:hover { filter: brightness(1.05); }
+    .btn:active { transform: translateY(1px); }
+    .btn.secondary {
+      background: var(--surface-2); color: var(--text); border-color: var(--border);
+    }
+    .btn.secondary:hover { background: #232837; }
+    .btn.ghost {
+      background: transparent; color: var(--text-muted); border-color: transparent;
+    }
+    .btn.ghost:hover { color: var(--text); }
+    .btn.block { width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+    .btn.lg { padding: 14px 18px; font-size: 15px; }
+
+    .hint { color: var(--text-muted); font-size: 13px; margin-top: 10px; }
+    .error { color: var(--danger); font-size: 13px; margin-top: 10px; display: none; }
+    .error.show { display: block; }
+
+    .result { display: none; margin-top: 16px; }
+    .result.show { display: block; }
+    .result-label { display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 8px; }
+    .pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 3px 8px; border-radius: 999px;
+      background: var(--surface-2); border: 1px solid var(--border);
+      font-size: 12px; color: var(--text);
+    }
+    .pill .swatch { width: 8px; height: 8px; border-radius: 999px; display: inline-block; }
+
+    .link-box {
+      display: flex; gap: 8px; align-items: center;
+      background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 8px 10px;
+      word-break: break-all;
+    }
+    .link-box code { flex: 1; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; color: var(--text); }
+
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+    @media (max-width: 520px) { .row { grid-template-columns: 1fr; } }
+
+    .platforms {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 8px;
+      /* Prevent implicit min-width: auto on the grid container itself
+         when used inside a flex parent (modal body). */
+      min-width: 0;
+      width: 100%;
+    }
+    .platform {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 12px;
+      background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); font-size: 13px;
+      /* Critical: grid items default to min-width: auto (= min-content),
+         which makes cells expand to fit the longest unbreakable content
+         (e.g. Spotify's long kinds list) and breaks `1fr 1fr` layouts.
+         min-width: 0 lets the cell honour 1fr so ellipsis can kick in. */
+      min-width: 0;
+      overflow: hidden;
+    }
+    .platform .icon {
+      width: 26px; height: 26px; display: grid; place-items: center;
+      border-radius: 7px; color: white; font-weight: 700; font-size: 14px;
+      flex-shrink: 0;
+    }
+    .platform .meta { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+    .platform .title { font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .platform .kind { color: var(--text-muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .section-title {
+      font-size: 13px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .08em;
+      margin: 22px 4px 10px;
+    }
+
+    /* Redirect view */
+    .redirect-view { text-align: center; padding: 28px 20px; display: none; }
+    .redirect-view.show { display: block; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 6px 12px; border-radius: 999px;
+      background: var(--surface-2); border: 1px solid var(--border);
+      color: var(--text); font-size: 13px;
+    }
+    .badge .swatch { width: 10px; height: 10px; border-radius: 999px; }
+    .spinner {
+      width: 54px; height: 54px; border-radius: 50%;
+      border: 3px solid var(--border); border-top-color: var(--accent);
+      animation: spin 0.9s linear infinite;
+      margin: 22px auto 18px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .redirect-view h2 { margin: 0 0 6px; font-size: 22px; letter-spacing: -0.01em; }
+    .redirect-view p { color: var(--text-muted); margin: 0 0 18px; }
+    .id-chip {
+      display: inline-block; padding: 4px 8px; border-radius: 6px;
+      background: var(--surface-2); border: 1px solid var(--border);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    footer {
+      text-align: center; color: var(--text-muted); font-size: 12px;
+      padding: 24px 16px;
+      display: flex; flex-wrap: wrap; justify-content: center; align-items: center;
+      gap: 0 8px;
+    }
+    footer a { color: var(--text-muted); text-decoration: underline dotted; }
+    .footer-link {
+      color: var(--text); text-decoration: none;
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 2px 8px; border-radius: 999px;
+      background: var(--surface-2); border: 1px solid var(--border);
+      font-weight: 500;
+      transition: border-color .15s, color .15s;
+    }
+    .footer-link:hover { border-color: var(--accent); color: var(--text); }
+    .footer-link::before {
+      content: "★"; font-size: 10px; color: var(--accent);
+    }
+    .footer-sep { opacity: 0.5; }
+
+    .toast {
+      position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(20px);
+      background: var(--surface); border: 1px solid var(--border); color: var(--text);
+      padding: 10px 14px; border-radius: 999px; font-size: 13px;
+      box-shadow: var(--shadow);
+      opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s;
+      z-index: 50;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
+
+    /* Inline text-button for "See supported platforms" triggers */
+    .link-btn {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: none; border: none; padding: 0;
+      color: var(--accent); font: inherit; font-size: 13px; font-weight: 500;
+      cursor: pointer;
+    }
+    .link-btn:hover { text-decoration: underline; text-underline-offset: 3px; }
+    .link-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
+    .link-btn .arrow { transition: transform .15s; }
+    .link-btn:hover .arrow { transform: translateX(2px); }
+
+    .supported-trigger {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 10px; margin-top: 14px;
+      color: var(--text-muted); font-size: 13px;
+    }
+
+    /* Modal */
+    .modal-backdrop {
+      position: fixed; inset: 0;
+      background: rgba(5, 7, 12, 0.65);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      display: none;
+      z-index: 100;
+      padding: 24px;
+      align-items: center; justify-content: center;
+      animation: backdropIn .15s ease-out;
+    }
+    .modal-backdrop.show { display: flex; }
+    @keyframes backdropIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes modalIn { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: none; } }
+    @keyframes sheetIn  { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: none; } }
+
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      width: 100%;
+      max-width: 560px;
+      max-height: min(80vh, 680px);
+      display: flex; flex-direction: column;
+      animation: modalIn .18s ease-out;
+    }
+    .modal-header {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .modal-header h3 { margin: 0; font-size: 16px; letter-spacing: -0.01em; }
+    .modal-header .count { color: var(--text-muted); font-weight: 500; font-size: 13px; margin-left: 6px; }
+    .modal-close {
+      width: 34px; height: 34px; border-radius: 8px;
+      background: transparent; border: 1px solid transparent; color: var(--text-muted);
+      font-size: 20px; line-height: 1; cursor: pointer;
+      display: grid; place-items: center; flex-shrink: 0;
+    }
+    .modal-close:hover { background: var(--surface-2); color: var(--text); border-color: var(--border); }
+    .modal-close:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    .modal-body {
+      padding: 16px 20px 20px;
+      overflow-y: auto;
+      overflow-x: hidden;
+      flex: 1 1 auto;
+      min-width: 0;
+      -webkit-overflow-scrolling: touch;
+    }
+    .modal-footer {
+      padding: 12px 20px;
+      border-top: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 12px;
+    }
+    .modal-footer code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      padding: 1px 5px; border-radius: 5px;
+    }
+
+    body.modal-open { overflow: hidden; }
+
+    /* Mobile polish */
+    @media (max-width: 560px) {
+      .container { padding: 18px 16px 24px; }
+      header.topbar { padding: clamp(32px, 9vw, 64px) 16px 14px; }
+      .brand { flex-direction: column; gap: 0.35em; text-align: center; }
+      .brand .mark { font-size: 1.2em; }
+      .hero { padding: 10px 0 20px; }
+      .hero p { font-size: 14px; }
+      .card { padding: 16px; border-radius: 12px; }
+      .field { flex-direction: column; gap: 8px; }
+      .field .btn { width: 100%; padding: 13px 14px; }
+      .link-box { padding: 10px 12px; }
+      .result-label { flex-wrap: wrap; }
+      footer { padding: 18px 16px; font-size: 11px; }
+
+      /* Modal becomes a bottom sheet */
+      .modal-backdrop { padding: 0; align-items: flex-end; }
+      .modal {
+        max-width: none;
+        max-height: 88vh;
+        border-radius: 16px 16px 0 0;
+        border-left: none; border-right: none; border-bottom: none;
+        animation: sheetIn .22s ease-out;
+      }
+      .modal-header { padding: 14px 16px; position: relative; }
+      .modal-header::before {
+        content: ""; position: absolute; top: 6px; left: 50%;
+        transform: translateX(-50%);
+        width: 36px; height: 4px; border-radius: 999px;
+        background: var(--border);
+      }
+      .modal-body { padding: 14px 16px 18px; }
+      .modal-footer { padding: 10px 16px 14px; }
+      .platforms { grid-template-columns: 1fr 1fr; }
+    }
+
+    @media (max-width: 380px) {
+      .platforms { grid-template-columns: 1fr; }
+    }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="Open Deep Redirect — home">
+        <span class="mark" aria-hidden="true">↗</span>
+        <span class="name">Open Deep Redirect</span>
+      </a>
+    </header>
+
+    <main>
+      <div class="container">
+        <!-- Generator view -->
+        <section id="generatorView">
+          <div class="hero">
+            <h1>Turn links into <span class="grad">native-app links</span></h1>
+            <p>Paste a supported URL. We generate a clean redirect that opens the target app, with a reliable web fallback.</p>
+          </div>
+
+          <div class="card">
+            <div class="field">
+              <input id="urlInput" class="input" type="url" placeholder="Paste a link (YouTube, Spotify, X, …)"
+                     autocomplete="off" autocapitalize="off" spellcheck="false" />
+              <button id="generateBtn" class="btn">Generate</button>
+            </div>
+            <div id="errorMsg" class="error" role="alert"></div>
+
+            <div id="resultBox" class="result">
+              <div class="result-label">
+                <span>Generated link</span>
+                <span id="platformPill" class="pill"><span class="swatch"></span><span class="label"></span></span>
+              </div>
+              <div class="link-box">
+                <code id="generatedLink"></code>
+              </div>
+              <div class="row">
+                <button id="copyBtn" class="btn block">Copy link</button>
+                <button id="openBtn" class="btn secondary block">Open link</button>
+              </div>
+              <div class="hint">
+                Share this link. Opening it on mobile will try the native app, then fall back to the web.
+              </div>
+            </div>
+
+            <div class="supported-trigger">
+              <span id="supportedBlurb">Works with <span id="supportedCount">–</span> services</span>
+              <button id="openPlatformsModalBtn" class="link-btn" type="button" aria-haspopup="dialog" aria-controls="platformsModal">
+                See the full list <span class="arrow" aria-hidden="true">→</span>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Redirect view -->
+        <section id="redirectView" class="redirect-view">
+          <div id="redirectBadge" class="badge">
+            <span class="swatch"></span>
+            <span id="redirectBadgeLabel">Loading…</span>
+          </div>
+          <div class="spinner"></div>
+          <h2 id="redirectTitle">Opening in app…</h2>
+          <p id="redirectSubtitle">If nothing happens in a moment, use the button below.</p>
+          <div id="redirectId" class="id-chip" style="margin-bottom: 18px;"></div>
+          <div class="row" style="max-width: 420px; margin: 0 auto;">
+            <button id="openAppBtn" class="btn lg block">Open in app</button>
+            <button id="openWebBtn" class="btn secondary lg block">Open in browser</button>
+          </div>
+          <p style="margin-top: 18px;">
+            <a id="backHome" href="/" class="btn ghost">← Back to generator</a>
+          </p>
+        </section>
+      </div>
+    </main>
+
+    <footer>
+        Pure client-side
+        <span class="footer-sep" aria-hidden="true">·</span>
+        <a class="footer-link" href="https://github.com/" target="_blank" rel="noopener noreferrer">Open source</a>
+        <span class="footer-sep" aria-hidden="true">·</span>
+        No tracking, no backend
+      </footer>
+    </footer>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <!-- Supported platforms modal -->
+  <div id="platformsModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="platformsModalTitle" aria-hidden="true">
+    <div class="modal" role="document">
+      <div class="modal-header">
+        <h3 id="platformsModalTitle">Supported platforms<span class="count" id="platformsModalCount"></span></h3>
+        <button id="closePlatformsModalBtn" class="modal-close" type="button" aria-label="Close">×</button>
+      </div>
+      <div class="modal-body">
+        <div id="platformList" class="platforms"></div>
+      </div>
+      <div class="modal-footer">
+        Don't see one you need? Add it by contributing to this project on <a href="https://github.com/dummy-link" target="_blank" rel="noopener">GitHub</a>.
+      </div>
+    </div>
+  </div>
+
+  <!--
+    Inline fallback config — a full copy of platforms.json, used only if the
+    external fetch fails (e.g. opening index.html via file://, where fetch of
+    ./platforms.json is blocked). In production the external file is fetched
+    and takes precedence, so editing platforms.json still takes effect live.
+    Keep in sync by running:  node scripts/sync-inline-config.mjs
+  -->
+  <!-- INLINE_CONFIG_START (auto-generated by scripts/sync-inline-config.mjs — do not hand-edit) -->
+  <script type="application/json" id="inlinePlatformsConfig">{"version":1,"platforms":{"youtube":{"name":"YouTube","kind":"Video","icon":"▶","color":"#FF0000","domains":["youtube.com","youtu.be","m.youtube.com","music.youtube.com","www.youtube.com"],"extractors":["youtu\\.be/([\\w-]{11})","youtube\\.com/shorts/([\\w-]{11})","youtube\\.com/embed/([\\w-]{11})","youtube\\.com/live/([\\w-]{11})","[?&]v=([\\w-]{11})"],"idValidator":"^[\\w-]{11}$","deepLink":"youtube://watch?v={id}","webLink":"https://www.youtube.com/watch?v={id}"},"youtube-playlist":{"name":"YouTube","kind":"Playlist","icon":"▶","color":"#FF0000","domains":["youtube.com","m.youtube.com","music.youtube.com","www.youtube.com"],"extractors":["[?&]list=([\\w-]+)"],"idValidator":"^[\\w-]+$","deepLink":"youtube://playlist?list={id}","webLink":"https://www.youtube.com/playlist?list={id}"},"x-status":{"name":"X / Twitter","kind":"Post","icon":"𝕏","color":"#000000","domains":["twitter.com","x.com","mobile.twitter.com","mobile.x.com","www.twitter.com","www.x.com"],"extractors":["(?:twitter|x)\\.com/(?:#!/)?[^/]+/status(?:es)?/(\\d+)","(?:twitter|x)\\.com/i/web/status/(\\d+)"],"idValidator":"^\\d+$","deepLink":"twitter://status?id={id}","webLink":"https://x.com/i/status/{id}"},"x-user":{"name":"X / Twitter","kind":"Profile","icon":"𝕏","color":"#000000","domains":["twitter.com","x.com","mobile.twitter.com","mobile.x.com","www.twitter.com","www.x.com"],"extractors":["^https?://(?:www\\.|mobile\\.)?(?:twitter|x)\\.com/(?!i/|home|explore|notifications|messages|settings|search|compose|tos|privacy|login|signup)([A-Za-z0-9_]{1,15})/?(?:[?#].*)?$"],"idValidator":"^[A-Za-z0-9_]{1,15}$","deepLink":"twitter://user?screen_name={id}","webLink":"https://x.com/{id}"},"instagram-post":{"name":"Instagram","kind":"Post / Reel","icon":"◉","color":"#E4405F","domains":["instagram.com","www.instagram.com","m.instagram.com"],"extractors":["instagram\\.com/(?:p|reel|reels|tv)/([\\w-]+)"],"idValidator":"^[\\w-]+$","deepLink":"instagram://media?shortcode={id}","webLink":"https://www.instagram.com/p/{id}/"},"instagram-profile":{"name":"Instagram","kind":"Profile","icon":"◉","color":"#E4405F","domains":["instagram.com","www.instagram.com","m.instagram.com"],"extractors":["^https?://(?:www\\.|m\\.)?instagram\\.com/([A-Za-z0-9_.]{1,30})/?(?:[?#].*)?$"],"idValidator":"^[A-Za-z0-9_.]{1,30}$","deepLink":"instagram://user?username={id}","webLink":"https://www.instagram.com/{id}/"},"spotify-track":{"name":"Spotify","kind":"Track","icon":"♪","color":"#1DB954","domains":["open.spotify.com","spotify.com"],"extractors":["spotify\\.com/(?:intl-[a-z]{2}/)?track/([A-Za-z0-9]+)"],"idValidator":"^[A-Za-z0-9]+$","deepLink":"spotify:track:{id}","webLink":"https://open.spotify.com/track/{id}"},"spotify-album":{"name":"Spotify","kind":"Album","icon":"♪","color":"#1DB954","domains":["open.spotify.com","spotify.com"],"extractors":["spotify\\.com/(?:intl-[a-z]{2}/)?album/([A-Za-z0-9]+)"],"idValidator":"^[A-Za-z0-9]+$","deepLink":"spotify:album:{id}","webLink":"https://open.spotify.com/album/{id}"},"spotify-playlist":{"name":"Spotify","kind":"Playlist","icon":"♪","color":"#1DB954","domains":["open.spotify.com","spotify.com"],"extractors":["spotify\\.com/(?:intl-[a-z]{2}/)?playlist/([A-Za-z0-9]+)"],"idValidator":"^[A-Za-z0-9]+$","deepLink":"spotify:playlist:{id}","webLink":"https://open.spotify.com/playlist/{id}"},"spotify-artist":{"name":"Spotify","kind":"Artist","icon":"♪","color":"#1DB954","domains":["open.spotify.com","spotify.com"],"extractors":["spotify\\.com/(?:intl-[a-z]{2}/)?artist/([A-Za-z0-9]+)"],"idValidator":"^[A-Za-z0-9]+$","deepLink":"spotify:artist:{id}","webLink":"https://open.spotify.com/artist/{id}"},"spotify-episode":{"name":"Spotify","kind":"Podcast Episode","icon":"♪","color":"#1DB954","domains":["open.spotify.com","spotify.com"],"extractors":["spotify\\.com/(?:intl-[a-z]{2}/)?episode/([A-Za-z0-9]+)"],"idValidator":"^[A-Za-z0-9]+$","deepLink":"spotify:episode:{id}","webLink":"https://open.spotify.com/episode/{id}"},"spotify-show":{"name":"Spotify","kind":"Podcast Show","icon":"♪","color":"#1DB954","domains":["open.spotify.com","spotify.com"],"extractors":["spotify\\.com/(?:intl-[a-z]{2}/)?show/([A-Za-z0-9]+)"],"idValidator":"^[A-Za-z0-9]+$","deepLink":"spotify:show:{id}","webLink":"https://open.spotify.com/show/{id}"},"tiktok-video":{"name":"TikTok","kind":"Video","icon":"♫","color":"#FE2C55","domains":["tiktok.com","www.tiktok.com","m.tiktok.com"],"extractors":["tiktok\\.com/@[\\w.-]+/video/(\\d+)","tiktok\\.com/v/(\\d+)"],"idValidator":"^\\d+$","deepLink":"snssdk1233://aweme/detail/{id}","webLink":"https://www.tiktok.com/embed/v2/{id}"},"twitch-channel":{"name":"Twitch","kind":"Channel","icon":"◈","color":"#9146FF","domains":["twitch.tv","www.twitch.tv","m.twitch.tv"],"extractors":["^https?://(?:www\\.|m\\.)?twitch\\.tv/(?!videos|directory|p/|subscriptions|inventory|wallet|settings)([A-Za-z0-9_]{3,25})/?(?:[?#].*)?$"],"idValidator":"^[A-Za-z0-9_]{3,25}$","deepLink":"twitch://stream/{id}","webLink":"https://www.twitch.tv/{id}"},"reddit-post":{"name":"Reddit","kind":"Post","icon":"⊛","color":"#FF4500","domains":["reddit.com","www.reddit.com","old.reddit.com","new.reddit.com","m.reddit.com"],"extractors":["reddit\\.com/r/([\\w-]+/comments/[a-z0-9]+)"],"idValidator":"^[\\w-]+/comments/[a-z0-9]+$","deepLink":"https://www.reddit.com/r/{id}/","webLink":"https://www.reddit.com/r/{id}/"},"reddit-subreddit":{"name":"Reddit","kind":"Subreddit","icon":"⊛","color":"#FF4500","domains":["reddit.com","www.reddit.com","old.reddit.com","new.reddit.com","m.reddit.com"],"extractors":["^https?://(?:www\\.|old\\.|new\\.|m\\.)?reddit\\.com/r/([\\w-]+)/?(?:[?#].*)?$"],"idValidator":"^[\\w-]+$","deepLink":"https://www.reddit.com/r/{id}/","webLink":"https://www.reddit.com/r/{id}/"},"linkedin-profile":{"name":"LinkedIn","kind":"Profile","icon":"in","color":"#0A66C2","domains":["linkedin.com","www.linkedin.com","m.linkedin.com"],"extractors":["linkedin\\.com/in/([A-Za-z0-9_-]+)"],"idValidator":"^[A-Za-z0-9_-]+$","deepLink":"linkedin://in/{id}","webLink":"https://www.linkedin.com/in/{id}/"},"linkedin-company":{"name":"LinkedIn","kind":"Company","icon":"in","color":"#0A66C2","domains":["linkedin.com","www.linkedin.com","m.linkedin.com"],"extractors":["linkedin\\.com/company/([A-Za-z0-9_-]+)"],"idValidator":"^[A-Za-z0-9_-]+$","deepLink":"linkedin://company/{id}","webLink":"https://www.linkedin.com/company/{id}/"},"pinterest-pin":{"name":"Pinterest","kind":"Pin","icon":"◉","color":"#E60023","domains":["pinterest.com","www.pinterest.com","pin.it"],"extractors":["pinterest\\.com/pin/(\\d+)"],"idValidator":"^\\d+$","deepLink":"pinterest://pin/{id}","webLink":"https://www.pinterest.com/pin/{id}/"},"telegram":{"name":"Telegram","kind":"Channel / User","icon":"✈","color":"#26A5E4","domains":["t.me","telegram.me"],"extractors":["^https?://(?:t|telegram)\\.me/([A-Za-z0-9_]{4,})/?(?:[?#].*)?$"],"idValidator":"^[A-Za-z0-9_]+$","deepLink":"tg://resolve?domain={id}","webLink":"https://t.me/{id}"},"whatsapp":{"name":"WhatsApp","kind":"Chat","icon":"✆","color":"#25D366","domains":["wa.me","api.whatsapp.com","chat.whatsapp.com"],"extractors":["wa\\.me/(\\+?\\d+)","api\\.whatsapp\\.com/send.*?[?&]phone=(\\+?\\d+)"],"idValidator":"^\\+?\\d+$","deepLink":"whatsapp://send?phone={id}","webLink":"https://wa.me/{id}"},"github-repo":{"name":"GitHub","kind":"Repository","icon":"◎","color":"#24292F","domains":["github.com","www.github.com"],"extractors":["^https?://(?:www\\.)?github\\.com/([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)/?(?:[?#].*)?$"],"idValidator":"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$","deepLink":"https://github.com/{id}","webLink":"https://github.com/{id}"},"maps-place":{"name":"Maps","kind":"Place","icon":"◎","color":"#1A73E8","domains":["maps.google.com","goo.gl","maps.app.goo.gl","google.com"],"extractors":["google\\.com/maps/place/([^/?#]+)","maps\\.app\\.goo\\.gl/([\\w-]+)"],"idValidator":"^[^/\\s]+$","deepLink":"comgooglemaps://?q={id}","webLink":"https://www.google.com/maps/search/?api=1&query={id}"},"apple-music-song":{"name":"Apple Music","kind":"Song","icon":"♫","color":"#FA2D48","domains":["music.apple.com"],"extractors":["music\\.apple\\.com/[a-z]{2}/album/[^/]+/\\d+\\?(?:[^#]*&)?i=(\\d+)","music\\.apple\\.com/[a-z]{2}/song/[^/]+/(\\d+)"],"idValidator":"^\\d+$","deepLink":"music://music.apple.com/song/{id}","webLink":"https://music.apple.com/song/{id}"},"apple-music-album":{"name":"Apple Music","kind":"Album","icon":"♫","color":"#FA2D48","domains":["music.apple.com"],"extractors":["music\\.apple\\.com/[a-z]{2}/album/[^/]+/(\\d+)(?:$|[/?#])"],"idValidator":"^\\d+$","deepLink":"music://music.apple.com/album/{id}","webLink":"https://music.apple.com/album/{id}"},"apple-music-playlist":{"name":"Apple Music","kind":"Playlist","icon":"♫","color":"#FA2D48","domains":["music.apple.com"],"extractors":["music\\.apple\\.com/[a-z]{2}/playlist/[^/]+/(pl\\.[A-Za-z0-9.-]+)"],"idValidator":"^pl\\.[A-Za-z0-9.-]+$","deepLink":"music://music.apple.com/playlist/{id}","webLink":"https://music.apple.com/playlist/{id}"},"apple-music-artist":{"name":"Apple Music","kind":"Artist","icon":"♫","color":"#FA2D48","domains":["music.apple.com"],"extractors":["music\\.apple\\.com/[a-z]{2}/artist/[^/]+/(\\d+)"],"idValidator":"^\\d+$","deepLink":"music://music.apple.com/artist/{id}","webLink":"https://music.apple.com/artist/{id}"},"vimeo-video":{"name":"Vimeo","kind":"Video","icon":"▷","color":"#1AB7EA","domains":["vimeo.com","www.vimeo.com","player.vimeo.com"],"extractors":["vimeo\\.com/(?:video/)?(\\d+)"],"idValidator":"^\\d+$","deepLink":"vimeo://app.vimeo.com/videos/{id}","webLink":"https://vimeo.com/{id}"},"threads-post":{"name":"Threads","kind":"Post","icon":"@","color":"#000000","domains":["threads.net","www.threads.net"],"extractors":["threads\\.net/@[\\w.]+/post/([\\w-]+)"],"idValidator":"^[\\w-]+$","deepLink":"barcelona://post/{id}","webLink":"https://www.threads.net/post/{id}"},"discord-invite":{"name":"Discord","kind":"Invite","icon":"◆","color":"#5865F2","domains":["discord.gg","discord.com","www.discord.com","discordapp.com"],"extractors":["discord\\.gg/([\\w-]+)","discord(?:app)?\\.com/invite/([\\w-]+)"],"idValidator":"^[\\w-]+$","deepLink":"discord://invite/{id}","webLink":"https://discord.gg/{id}"}}}</script>
+  <!-- INLINE_CONFIG_END -->
+
+  <script>
+  (() => {
+    "use strict";
+
+    const byId = (id) => document.getElementById(id);
+
+    const toastEl = byId("toast");
+    let toastTimer = 0;
+    function toast(msg) {
+      toastEl.textContent = msg;
+      toastEl.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toastEl.classList.remove("show"), 1800);
+    }
+
+    function interpolate(template, vars) {
+      return String(template).replace(/\{(\w+)\}/g, (_, k) => (k in vars ? vars[k] : ""));
+    }
+
+    function isMobile() {
+      return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+    }
+
+    // ---------- Config loading ----------
+    let CONFIG = { version: 0, platforms: {} };
+
+    function loadInlineConfig() {
+      try {
+        const inline = byId("inlinePlatformsConfig").textContent;
+        const data = JSON.parse(inline);
+        if (data && data.platforms) { CONFIG = data; return true; }
+      } catch (e) {
+        console.error("Inline platforms config is malformed", e);
+      }
+      return false;
+    }
+
+    async function loadConfig() {
+      // On file:// (local preview without a server) fetch('./platforms.json')
+      // is blocked by CORS. Skip the fetch and use the inline copy instead,
+      // which scripts/sync-inline-config.mjs keeps in sync with platforms.json.
+      if (location.protocol === "file:") { loadInlineConfig(); return; }
+
+      try {
+        const res = await fetch("./platforms.json", { cache: "no-cache" });
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        const data = await res.json();
+        if (data && data.platforms) { CONFIG = data; return; }
+        throw new Error("Malformed config");
+      } catch (err) {
+        // Network failure / CORS / malformed JSON — fall back to the inline copy.
+        if (!loadInlineConfig()) {
+          console.error("Failed to load platforms config", err);
+        }
+      }
+    }
+
+    // ---------- Detection ----------
+    function matchesDomain(url, domains) {
+      try {
+        const host = new URL(url).hostname.toLowerCase();
+        return (domains || []).some((d) => {
+          const dd = String(d).toLowerCase();
+          return host === dd || host.endsWith("." + dd);
+        });
+      } catch {
+        return false;
+      }
+    }
+
+    function detectPlatform(inputUrl) {
+      const url = String(inputUrl || "").trim();
+      if (!url) return null;
+      let normalized = url;
+      if (!/^https?:\/\//i.test(normalized)) normalized = "https://" + normalized;
+
+      for (const [key, cfg] of Object.entries(CONFIG.platforms)) {
+        if (!matchesDomain(normalized, cfg.domains)) continue;
+        for (const pattern of cfg.extractors || []) {
+          let re;
+          try { re = new RegExp(pattern, "i"); } catch { continue; }
+          const m = normalized.match(re);
+          if (m && m[1]) {
+            const id = m[1];
+            if (cfg.idValidator) {
+              try {
+                if (!new RegExp(cfg.idValidator).test(id)) continue;
+              } catch { /* invalid validator — skip check */ }
+            }
+            return { key, cfg, id };
+          }
+        }
+      }
+      return null;
+    }
+
+    // ---------- Link generation ----------
+    function buildRedirectUrl(key, id) {
+      const idPath = String(id).split("/").map(encodeURIComponent).join("/");
+      return `${location.origin}/r/${encodeURIComponent(key)}/${idPath}`;
+    }
+
+    // ---------- Safe DOM helpers ----------
+    function el(tag, props, children) {
+      const node = document.createElement(tag);
+      if (props) {
+        for (const [k, v] of Object.entries(props)) {
+          if (v == null) continue;
+          if (k === "class") node.className = v;
+          else if (k === "text") node.textContent = v;
+          else if (k === "style" && typeof v === "object") Object.assign(node.style, v);
+          else if (k.startsWith("on") && typeof v === "function") node.addEventListener(k.slice(2), v);
+          else node.setAttribute(k, v);
+        }
+      }
+      if (children) {
+        for (const child of [].concat(children)) {
+          if (child == null) continue;
+          node.appendChild(typeof child === "string" ? document.createTextNode(child) : child);
+        }
+      }
+      return node;
+    }
+
+    function clearNode(node) { while (node.firstChild) node.removeChild(node.firstChild); }
+
+    // ---------- Platform list ----------
+    // Group config entries by display name so each service shows once,
+    // with all its supported content kinds listed below.
+    function renderPlatformList() {
+      const list = byId("platformList");
+      clearNode(list);
+      const entries = Object.entries(CONFIG.platforms);
+      if (!entries.length) {
+        list.appendChild(el("div", { class: "hint", text: "No platforms configured." }));
+        return;
+      }
+
+      const groups = new Map();
+      for (const [key, cfg] of entries) {
+        const name = cfg.name || key;
+        if (!groups.has(name)) {
+          groups.set(name, { name, icon: cfg.icon || "•", color: cfg.color || "#555", kinds: [] });
+        }
+        const g = groups.get(name);
+        if (cfg.kind && !g.kinds.includes(cfg.kind)) g.kinds.push(cfg.kind);
+      }
+
+      // When a service supports more kinds than this, collapse the subtitle
+      // to just "All" to keep tiles visually balanced. The full list still
+      // shows in the native tooltip on hover.
+      const KIND_DISPLAY_CAP = 3;
+
+      for (const g of groups.values()) {
+        const icon = el("div", { class: "icon", style: { background: g.color }, text: g.icon });
+        const title = el("span", { class: "title", text: g.name });
+
+        let kindText;
+        if (!g.kinds.length) {
+          kindText = "Supported";
+        } else if (g.kinds.length <= KIND_DISPLAY_CAP) {
+          kindText = g.kinds.join(" · ");
+        } else {
+          kindText = "All";
+        }
+
+        const kind = el("span", { class: "kind", text: kindText });
+        const meta = el("div", { class: "meta" }, [title, kind]);
+        const fullKinds = g.kinds.length ? " — " + g.kinds.join(", ") : "";
+        const item = el("div", { class: "platform", title: `${g.name}${fullKinds}` }, [icon, meta]);
+        list.appendChild(item);
+      }
+    }
+
+    // ---------- Generator ----------
+    function setError(msg, opts) {
+      const node = byId("errorMsg");
+      clearNode(node);
+      if (!msg) { node.classList.remove("show"); return; }
+      node.appendChild(document.createTextNode(msg));
+      if (opts && opts.withPlatformsLink) {
+        node.appendChild(document.createTextNode(" "));
+        const link = el("button", {
+          class: "link-btn",
+          type: "button",
+          "aria-haspopup": "dialog",
+          "aria-controls": "platformsModal",
+          onclick: openPlatformsModal
+        }, ["See supported platforms ", el("span", { class: "arrow", "aria-hidden": "true" }, "→")]);
+        node.appendChild(link);
+      }
+      node.classList.add("show");
+    }
+
+    function showResult(match) {
+      const { key, cfg, id } = match;
+      const link = buildRedirectUrl(key, id);
+      byId("generatedLink").textContent = link;
+      byId("resultBox").classList.add("show");
+
+      const pill = byId("platformPill");
+      pill.querySelector(".swatch").style.background = cfg.color || "#555";
+      pill.querySelector(".label").textContent = `${cfg.name || key}${cfg.kind ? " · " + cfg.kind : ""}`;
+
+      byId("openBtn").onclick = () => { window.location.href = link; };
+      byId("copyBtn").onclick = async () => {
+        try {
+          await navigator.clipboard.writeText(link);
+          toast("Link copied");
+        } catch {
+          const tmp = document.createElement("textarea");
+          tmp.value = link;
+          document.body.appendChild(tmp);
+          tmp.select();
+          try { document.execCommand("copy"); } catch {}
+          tmp.remove();
+          toast("Link copied");
+        }
+      };
+    }
+
+    function hideResult() { byId("resultBox").classList.remove("show"); }
+
+    function handleGenerate() {
+      const input = byId("urlInput").value;
+      setError("");
+      hideResult();
+      if (!input.trim()) { setError("Paste a URL to get started."); return; }
+      const match = detectPlatform(input);
+      if (!match) {
+        setError("That link isn't supported yet.", { withPlatformsLink: true });
+        return;
+      }
+      showResult(match);
+    }
+
+    // ---------- Platforms modal ----------
+    let lastFocusBeforeModal = null;
+    function openPlatformsModal() {
+      const modal = byId("platformsModal");
+      lastFocusBeforeModal = document.activeElement;
+      modal.classList.add("show");
+      modal.setAttribute("aria-hidden", "false");
+      document.body.classList.add("modal-open");
+      setTimeout(() => byId("closePlatformsModalBtn").focus(), 0);
+    }
+    function closePlatformsModal() {
+      const modal = byId("platformsModal");
+      modal.classList.remove("show");
+      modal.setAttribute("aria-hidden", "true");
+      document.body.classList.remove("modal-open");
+      if (lastFocusBeforeModal && typeof lastFocusBeforeModal.focus === "function") {
+        lastFocusBeforeModal.focus();
+      }
+    }
+    function wirePlatformsModal() {
+      byId("openPlatformsModalBtn").addEventListener("click", openPlatformsModal);
+      byId("closePlatformsModalBtn").addEventListener("click", closePlatformsModal);
+      byId("platformsModal").addEventListener("click", (e) => {
+        if (e.target.id === "platformsModal") closePlatformsModal();
+      });
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && byId("platformsModal").classList.contains("show")) {
+          closePlatformsModal();
+        }
+      });
+    }
+
+    // Count unique services (grouped by display name) for the "Works with N services" blurb.
+    function countUniqueServices() {
+      const names = new Set();
+      for (const cfg of Object.values(CONFIG.platforms || {})) {
+        names.add(cfg.name || "");
+      }
+      return names.size;
+    }
+
+    // ---------- Router ----------
+    function parseRoutePath(pathAndQuery) {
+      const [path] = String(pathAndQuery).split("?");
+      const parts = path.split("/").filter(Boolean);
+      if (parts.length < 3) return null;
+      if (parts[0] !== "r") return null;
+      let key;
+      try { key = decodeURIComponent(parts[1]); } catch { return null; }
+      let idParts;
+      try { idParts = parts.slice(2).map(decodeURIComponent); } catch { return null; }
+      const id = idParts.join("/");
+      if (!key || !id) return null;
+      return { key, id };
+    }
+
+    function parseRedirectRoute() {
+      // Priority 1: SPA fallback saved by 404.html for GitHub Pages etc.
+      try {
+        const stored = sessionStorage.getItem("odr:redirectPath");
+        if (stored) {
+          sessionStorage.removeItem("odr:redirectPath");
+          const parsed = parseRoutePath(stored);
+          if (parsed) return parsed;
+        }
+      } catch {}
+
+      // Priority 2: real pathname (works when host supports SPA rewrites)
+      const fromPath = parseRoutePath(location.pathname + location.search);
+      if (fromPath) return fromPath;
+
+      // Priority 3: hash-based fallback: #/r/{platform}/{id...} or #r/{platform}/{id...}
+      const h = location.hash.replace(/^#\/?/, "");
+      if (h.startsWith("r/")) {
+        const parsed = parseRoutePath("/" + h);
+        if (parsed) return parsed;
+      }
+      return null;
+    }
+
+    function showGenerator() {
+      byId("generatorView").classList.remove("hidden");
+      byId("redirectView").classList.remove("show");
+      renderPlatformList();
+      wirePlatformsModal();
+
+      const services = countUniqueServices();
+      byId("supportedCount").textContent = String(services);
+      byId("platformsModalCount").textContent = services ? ` · ${services}` : "";
+
+      const input = byId("urlInput");
+      input.addEventListener("keydown", (e) => { if (e.key === "Enter") handleGenerate(); });
+      byId("generateBtn").addEventListener("click", handleGenerate);
+      input.addEventListener("paste", () => setTimeout(handleGenerate, 0));
+    }
+
+    function showRedirect(route) {
+      byId("generatorView").classList.add("hidden");
+      byId("redirectView").classList.add("show");
+
+      const cfg = CONFIG.platforms[route.key];
+      const badge = byId("redirectBadge");
+      const badgeSwatch = badge.querySelector(".swatch");
+      const idChip = byId("redirectId");
+      idChip.textContent = `${route.key} · ${route.id}`;
+
+      if (!cfg) {
+        badgeSwatch.style.background = "var(--danger)";
+        byId("redirectBadgeLabel").textContent = "Unknown platform";
+        byId("openAppBtn").disabled = true;
+        byId("openWebBtn").disabled = true;
+        byId("redirectTitle").textContent = "Unsupported link";
+        byId("redirectSubtitle").textContent = `"${route.key}" isn't configured. Edit platforms.json to add it.`;
+        return;
+      }
+
+      if (cfg.idValidator) {
+        try {
+          if (!new RegExp(cfg.idValidator).test(route.id)) {
+            badgeSwatch.style.background = "var(--danger)";
+            byId("redirectBadgeLabel").textContent = "Invalid ID";
+            byId("openAppBtn").disabled = true;
+            byId("openWebBtn").disabled = true;
+            byId("redirectTitle").textContent = "Invalid link";
+            byId("redirectSubtitle").textContent = "The ID in this link doesn't look valid. Refusing to redirect.";
+            return;
+          }
+        } catch {}
+      }
+
+      badgeSwatch.style.background = cfg.color || "var(--accent)";
+      byId("redirectBadgeLabel").textContent = `${cfg.name || route.key}${cfg.kind ? " · " + cfg.kind : ""}`;
+      document.title = `Opening ${cfg.name || route.key} — Open Deep Redirect`;
+
+      const deepLink = interpolate(cfg.deepLink || cfg.webLink || "", { id: route.id });
+      const webLink  = interpolate(cfg.webLink  || "", { id: route.id });
+
+      byId("openAppBtn").onclick = () => { window.location.href = deepLink; };
+      byId("openWebBtn").onclick = () => { window.location.href = webLink; };
+
+      const onMobile = isMobile();
+
+      if (onMobile && deepLink && deepLink !== webLink) {
+        try { window.location.href = deepLink; } catch {}
+      }
+
+      // If the app opens, the page gets backgrounded and we cancel the web fallback.
+      let cancelled = false;
+      const cancel = () => { cancelled = true; };
+      document.addEventListener("visibilitychange", () => { if (document.hidden) cancel(); });
+      window.addEventListener("pagehide", cancel);
+      window.addEventListener("blur", cancel);
+
+      const fallbackDelay = onMobile ? 1800 : 250;
+      setTimeout(() => {
+        if (cancelled) return;
+        if (webLink) window.location.href = webLink;
+      }, fallbackDelay);
+    }
+
+    async function init() {
+      await loadConfig();
+      const route = parseRedirectRoute();
+      if (route) showRedirect(route);
+      else showGenerator();
+    }
+
+    init();
+  })();
+  </script>
+</body>
+</html>
