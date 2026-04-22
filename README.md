@@ -16,30 +16,6 @@ https://your-domain.com/r/{platform}/{id}
 - **Private & safe** — runs entirely in the browser. Only domains on the allow-list are accepted; IDs are validated against per-platform regex before any redirect.
 - **Open source** — MIT-licensed. Fork it, self-host it, add your own platforms.
 
-## Supported platforms
-
-17 services out of the box (30 content kinds):
-
-| Service | Kinds |
-|---|---|
-| YouTube | Video, Playlist |
-| X / Twitter | Post, Profile |
-| Instagram | Post / Reel, Profile |
-| Spotify | Track, Album, Playlist, Artist, Podcast Episode, Podcast Show |
-| Apple Music | Song, Album, Playlist, Artist |
-| TikTok | Video |
-| Twitch | Channel |
-| Reddit | Post, Subreddit |
-| LinkedIn | Profile, Company |
-| Pinterest | Pin |
-| Telegram | Channel / User |
-| WhatsApp | Chat |
-| Discord | Invite |
-| Threads | Post |
-| Vimeo | Video |
-| GitHub | Repository |
-| Maps | Place |
-
 ## How it works
 
 ### Generator (`/`)
