@@ -32,7 +32,7 @@ https://your-domain.com/r/{platform}/{id}
 
 ### Link preview
 
-The preview card fetches metadata using a three-strategy waterfall — no API key required:
+When you paste a link, a preview card fetches metadata using a three-strategy waterfall:
 
 | Strategy | How | Platforms |
 |---|---|---|
@@ -40,7 +40,12 @@ The preview card fetches metadata using a three-strategy waterfall — no API ke
 | **Direct CDN URL** | Predictable image URL, zero network fetch | YouTube thumbnails (`img.youtube.com`), GitHub owner avatar |
 | **[Microlink.io](https://microlink.io) OG scrape** | CORS-enabled free endpoint, reads Open Graph tags | Spotify, TikTok, Twitch, Telegram, WhatsApp, Threads, Discord, Maps, and more |
 
-> **Note:** LinkedIn and Instagram actively block all external crawlers at the network level. A rich preview isn't possible for those platforms without their official API (which requires app approval).
+> **Note:** LinkedIn and Instagram actively block all external crawlers at the network level. A rich preview isn't possible for those platforms without their official API.
+
+**For WhatsApp / Social Previews (Serverless Edge Function)**
+Social media crawlers (like WhatsApp, iMessage, and Twitter) do not run JavaScript, which means they cannot natively execute the above preview logic themselves. 
+To solve this, this project utilizes a **Netlify Edge Function** (`netlify/edge-functions/og-injector.js`). 
+Whenever a crawler fetches a `/r/*` redirect link, the edge function quickly runs the exact same metadata waterfall logic on Deno, dynamically injects the correct `<meta property="og:image">` and `<meta property="og:title">` tags into the raw HTML, and returns that HTML to the crawler immediately. This gives you rich previews on WhatsApp while maintaining essentially a "zero-backend" operational structure.
 
 ### Redirect (`/r/{platform}/{id}`)
 
@@ -149,8 +154,9 @@ Field reference:
 - URLs are matched against an **allow-list of domains**; anything else is rejected with a clear error.
 - The extracted id is validated against `idValidator` both when generating and when redirecting. Manipulated `/r/...` URLs with malformed ids won't redirect.
 - Templates only substitute a single `{id}` token — there's no arbitrary URL construction.
-- **No server, no logging, no analytics.** The app runs entirely in the user's browser. Links you generate and redirects you follow never leave the client.
+- **No central server.** The app logic runs entirely in the user's browser. Links you generate and redirects you follow never leave the client.
 - The link preview feature uses [Microlink.io](https://microlink.io)'s public CORS endpoint to fetch Open Graph metadata. Only the reconstructed `webLink` URL is sent to Microlink — no personal data.
+- The social app preview generator operates via a secure Netlify Edge Function which strictly follows the allowed config routes, acting as an ephemeral proxy strictly just to hydrate OG Meta tags for social crawlers like WhatsApp.
 
 ## Project layout
 
@@ -158,8 +164,11 @@ Field reference:
 open-deep-redirect/
 ├── index.html        # the entire app (plus an inline fallback copy of the config)
 ├── platforms.json    # the only file you need to edit to add platforms
-├── netlify.toml      # Netlify config (publish dir, rewrites, headers)
+├── netlify.toml      # Netlify config (publish dir, rewrites, edge functions, headers)
 ├── _redirects        # Netlify rewrite fallback
+├── netlify/
+│   └── edge-functions/
+│       └── og-injector.js       # Deno edge function injecting OG data for Whatsapp/iMessage
 ├── scripts/
 │   ├── sync-inline-config.mjs   # embeds platforms.json into index.html
 │   └── update-contributors.mjs  # regenerates the contributors table in README.md
