@@ -1,3 +1,5 @@
+import siteConfig from "../../platforms.json" with { type: "json" };
+
 export default async function (request, context) {
   // 1. Parse URL to get platform and id from /r/{platform}/{id}
   const url = new URL(request.url);
@@ -11,17 +13,8 @@ export default async function (request, context) {
   const platformKey = decodeURIComponent(match[1]);
   const id = match[2]; // keep url-encoded format for id since it may contain slashes
 
-  // 2. Fetch the platforms config
-  let config;
-  try {
-    const configRes = await fetch(new URL("/platforms.json", request.url));
-    if (!configRes.ok) throw new Error("Failed to fetch platforms config");
-    const json = await configRes.json();
-    config = json.platforms[platformKey];
-  } catch (err) {
-    console.error("Error reading platforms.json in edge function:", err);
-    return context.next();
-  }
+  // 2. Read the platform config from the imported JSON
+  const config = siteConfig.platforms[platformKey];
 
   // If the platform isn't valid, just return the default page
   if (!config) return context.next();
