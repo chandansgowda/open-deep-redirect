@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -260,6 +260,67 @@
 
     .result { display: none; margin-top: 16px; }
     .result.show { display: block; }
+
+    /* Link preview card */
+    .preview-card {
+      display: flex; align-items: stretch; gap: 0;
+      background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); overflow: hidden;
+      margin-bottom: 14px;
+      min-height: 90px;
+      animation: previewIn .2s ease-out;
+    }
+    @keyframes previewIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+    .preview-thumb-wrap {
+      flex-shrink: 0;
+      width: 140px;
+      position: relative;
+      overflow: hidden;
+      background: var(--surface);
+    }
+    .preview-thumb-wrap img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .preview-thumb-placeholder {
+      width: 100%; height: 100%;
+      display: grid; place-items: center;
+      font-size: 2rem;
+      color: white;
+    }
+    .preview-meta-wrap {
+      flex: 1; display: flex; flex-direction: column; justify-content: center;
+      padding: 12px 14px; gap: 5px; min-width: 0;
+    }
+    .preview-platform {
+      font-size: 11px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: .07em; color: var(--text-muted);
+      display: flex; align-items: center; gap: 6px;
+    }
+    .preview-platform .pswatch {
+      display: inline-block; width: 8px; height: 8px;
+      border-radius: 999px; flex-shrink: 0;
+    }
+    .preview-title {
+      font-size: 14px; font-weight: 600; color: var(--text);
+      line-height: 1.35;
+      display: -webkit-box; -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .preview-title.loading {
+      color: var(--text-muted);
+      font-weight: 400;
+      font-style: italic;
+    }
+    .preview-id {
+      font-size: 11px; color: var(--text-muted);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    @media (max-width: 480px) {
+      .preview-thumb-wrap { width: 100px; }
+    }
     .result-label { display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 8px; }
     .pill {
       display: inline-flex; align-items: center; gap: 6px;
@@ -538,6 +599,19 @@
             <div id="errorMsg" class="error" role="alert"></div>
 
             <div id="resultBox" class="result">
+              <!-- Link preview card -->
+              <div id="previewCard" class="preview-card" style="display:none">
+                <div class="preview-thumb-wrap" id="previewThumbWrap"></div>
+                <div class="preview-meta-wrap">
+                  <div class="preview-platform">
+                    <span class="pswatch" id="previewSwatch"></span>
+                    <span id="previewPlatformLabel"></span>
+                  </div>
+                  <div class="preview-title loading" id="previewTitle">Fetching title…</div>
+                  <div class="preview-id" id="previewId"></div>
+                </div>
+              </div>
+
               <div class="result-label">
                 <span>Generated link</span>
                 <span id="platformPill" class="pill"><span class="swatch"></span><span class="label"></span></span>
@@ -733,6 +807,172 @@
       return `${location.origin}/r/${encodeURIComponent(key)}/${idPath}`;
     }
 
+    // ---------- Preview ----------
+    // Per-platform providers. Each may return:
+    //   thumbnail(id) → direct image URL (no fetch needed)
+    //   oembed(id)    → oEmbed JSON endpoint URL (CORS-enabled)
+    const PREVIEW_PROVIDERS = {
+      // ── Video ───────────────────────────────────────────────────────────────
+      "youtube": {
+        thumbnail: (id) => `https://img.youtube.com/vi/${id}/hqdefault.jpg`,
+        oembed: (id) => `https://www.youtube.com/oembed?url=${encodeURIComponent("https://www.youtube.com/watch?v=" + id)}&format=json`,
+      },
+      "youtube-playlist": {
+        oembed: (id) => `https://www.youtube.com/oembed?url=${encodeURIComponent("https://www.youtube.com/playlist?list=" + id)}&format=json`,
+      },
+      "vimeo-video": {
+        oembed: (id) => `https://vimeo.com/api/oembed.json?url=${encodeURIComponent("https://vimeo.com/" + id)}`,
+      },
+
+      // ── Social ──────────────────────────────────────────────────────────────
+      // Twitter's publish endpoint is CORS-enabled and requires no API key.
+      // It returns author_name (handle) rather than a title, so the
+      // author_name fallback in loadPreview handles display.
+      "x-status": {
+        oembed: (id) => `https://publish.twitter.com/oembed?url=${encodeURIComponent("https://twitter.com/i/status/" + id)}&omit_script=true`,
+      },
+      // Reddit's oEmbed is public and CORS-enabled.
+      "reddit-post": {
+        oembed: (id) => `https://www.reddit.com/oembed?url=${encodeURIComponent("https://www.reddit.com/r/" + id + "/")}`,
+      },
+
+      // ── Music ───────────────────────────────────────────────────────────────
+      // Apple Music has a fully public oEmbed endpoint that returns artwork.
+      "apple-music-song": {
+        oembed: (id) => `https://music.apple.com/oembed?url=${encodeURIComponent("https://music.apple.com/song/" + id)}`,
+      },
+      "apple-music-album": {
+        oembed: (id) => `https://music.apple.com/oembed?url=${encodeURIComponent("https://music.apple.com/album/" + id)}`,
+      },
+      "apple-music-playlist": {
+        oembed: (id) => `https://music.apple.com/oembed?url=${encodeURIComponent("https://music.apple.com/playlist/" + id)}`,
+      },
+      "apple-music-artist": {
+        oembed: (id) => `https://music.apple.com/oembed?url=${encodeURIComponent("https://music.apple.com/artist/" + id)}`,
+      },
+
+      // ── Other ───────────────────────────────────────────────────────────────
+      // GitHub: owner avatar is a stable public URL — no API key needed.
+      "github-repo": {
+        thumbnail: (id) => `https://github.com/${id.split("/")[0]}.png?size=200`,
+      },
+      // Pinterest oEmbed is public.
+      "pinterest-pin": {
+        oembed: (id) => `https://www.pinterest.com/oembed.json?url=${encodeURIComponent("https://www.pinterest.com/pin/" + id + "/")}`,
+      },
+    };
+
+    let previewAbortCtrl = null;
+
+    function renderPlaceholderThumb(color, icon) {
+      const wrap = byId("previewThumbWrap");
+      clearNode(wrap);
+      const ph = el("div", {
+        class: "preview-thumb-placeholder",
+        style: { background: color || "var(--surface)" },
+        text: icon || "•",
+      });
+      wrap.appendChild(ph);
+    }
+
+    async function loadPreview(key, id, cfg) {
+      // Cancel any in-flight previous preview fetch
+      if (previewAbortCtrl) previewAbortCtrl.abort();
+      previewAbortCtrl = new AbortController();
+      const signal = previewAbortCtrl.signal;
+
+      const card = byId("previewCard");
+      card.style.display = "";
+
+      // Show platform badge immediately
+      byId("previewSwatch").style.background = cfg.color || "var(--accent)";
+      byId("previewPlatformLabel").textContent =
+        `${cfg.name || key}${cfg.kind ? " \u00b7 " + cfg.kind : ""}`;
+      byId("previewId").textContent = id;
+
+      const provider = PREVIEW_PROVIDERS[key];
+      const thumbWrap = byId("previewThumbWrap");
+      const titleEl  = byId("previewTitle");
+
+      // Reset to loading state
+      clearNode(thumbWrap);
+      renderPlaceholderThumb(cfg.color, cfg.icon);
+      titleEl.textContent = "Fetching preview\u2026";
+      titleEl.classList.add("loading");
+
+      // Helper: swap in a real image, revert to placeholder on error
+      function setThumb(url) {
+        clearNode(thumbWrap);
+        const img = el("img", { src: url, alt: "" });
+        img.onerror = () => renderPlaceholderThumb(cfg.color, cfg.icon);
+        thumbWrap.appendChild(img);
+      }
+
+      // Strategy 1: platform-specific oEmbed (no API key, no rate limit)
+      // Covers: YouTube, YouTube Playlist, Vimeo, X/Twitter posts, Reddit posts,
+      //         Apple Music (all kinds), Pinterest pins.
+      if (provider && provider.oembed) {
+        try {
+          const res = await fetch(provider.oembed(id), { signal });
+          if (!res.ok) throw new Error("HTTP " + res.status);
+          const data = await res.json();
+          titleEl.textContent = data.title || data.author_name || (cfg.name || key);
+          titleEl.classList.remove("loading");
+          if (data.thumbnail_url) setThumb(data.thumbnail_url);
+          else if (provider.thumbnail) setThumb(provider.thumbnail(id));
+          return;
+        } catch (err) {
+          if (err.name === "AbortError") return;
+          // fall through
+        }
+      }
+
+      // Strategy 2: direct thumbnail URL (no network fetch needed)
+      // Covers: YouTube (img CDN), GitHub (owner avatar).
+      if (provider && provider.thumbnail) {
+        setThumb(provider.thumbnail(id));
+        // Title still unresolved, fall through to Microlink.
+      }
+
+      // Strategy 3: Microlink.io universal OG scraper (CORS-enabled, free tier)
+      // Covers everything else: LinkedIn, Spotify, Instagram, TikTok, Twitch,
+      // Telegram, WhatsApp, Threads, Discord, Google Maps, X profiles, etc.
+      // Uses cfg.webLink to reconstruct the original URL, then fetches its
+      // OG metadata via Microlink's CORS-enabled free endpoint.
+      const webUrl = cfg.webLink ? interpolate(cfg.webLink, { id }) : null;
+      if (webUrl) {
+        try {
+          const res = await fetch(
+            "https://api.microlink.io/?url=" + encodeURIComponent(webUrl),
+            { signal }
+          );
+          if (!res.ok) throw new Error("HTTP " + res.status);
+          const json = await res.json();
+          if (json.status === "success" && json.data) {
+            const d = json.data;
+            titleEl.textContent = d.title || (cfg.name || key);
+            titleEl.classList.remove("loading");
+            // Only use Microlink image if we don't already have a direct thumbnail
+            if (!(provider && provider.thumbnail) && d.image && d.image.url) {
+              setThumb(d.image.url);
+            }
+            return;
+          }
+        } catch (err) {
+          if (err.name === "AbortError") return;
+        }
+      }
+
+      // Final fallback: display platform name
+      titleEl.textContent = cfg.name || key;
+      titleEl.classList.remove("loading");
+    }
+    function hidePreview() {
+      const card = byId("previewCard");
+      if (card) card.style.display = "none";
+      if (previewAbortCtrl) { previewAbortCtrl.abort(); previewAbortCtrl = null; }
+    }
+
     // ---------- Safe DOM helpers ----------
     function el(tag, props, children) {
       const node = document.createElement(tag);
@@ -835,6 +1075,9 @@
       pill.querySelector(".swatch").style.background = cfg.color || "#555";
       pill.querySelector(".label").textContent = `${cfg.name || key}${cfg.kind ? " · " + cfg.kind : ""}`;
 
+      // Show link preview card
+      loadPreview(key, id, cfg);
+
       byId("openBtn").onclick = () => { window.location.href = link; };
       byId("copyBtn").onclick = async () => {
         try {
@@ -852,7 +1095,10 @@
       };
     }
 
-    function hideResult() { byId("resultBox").classList.remove("show"); }
+    function hideResult() {
+      byId("resultBox").classList.remove("show");
+      hidePreview();
+    }
 
     function handleGenerate() {
       const input = byId("urlInput").value;
