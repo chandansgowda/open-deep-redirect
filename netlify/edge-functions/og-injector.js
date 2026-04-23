@@ -79,13 +79,19 @@ export default async function (request, context) {
       if (oRes.ok) {
         const oData = await oRes.json();
         finalTitle = oData.title || oData.author_name || finalTitle;
-        finalImage = oData.thumbnail_url || (provider.thumbnail ? provider.thumbnail(ID_DECODED) : null);
+        finalImage = oData.thumbnail_url || null;
       }
-    } else if (provider && provider.thumbnail) {
-      // Strategy 2: Direct Thumbnail
+    }
+    
+    // Strategy 2: Direct Thumbnail Fallback
+    // If oEmbed failed (e.g. rate limit) or didn't return an image, try direct thumbnail.
+    if (!finalImage && provider && provider.thumbnail) {
       finalImage = provider.thumbnail(ID_DECODED);
-    } else {
-      // Strategy 3: Microlink fallback
+    }
+    
+    // Strategy 3: Microlink fallback
+    // Only use for platforms that have no Native oEmbed OR if we still have absolutely nothing
+    if (!provider?.oembed && !provider?.thumbnail) {
       const webUrl = buildWebUrl(config.webLink, ID_DECODED);
       if (webUrl) {
         const mRes = await fetch(`https://api.microlink.io/?url=${encodeURIComponent(webUrl)}`, { signal: controller.signal });
