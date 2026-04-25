@@ -5,6 +5,10 @@
   publish = "."
   command = ""
 
+[[edge_functions]]
+  path = "/r/*"
+  function = "og-injector"
+
 # Rewrite /r/{platform}/{id...} to index.html so client-side routing handles it.
 # Netlify serves real files (index.html, platforms.json, etc.) before applying rewrites,
 # so these rules never shadow your static assets.

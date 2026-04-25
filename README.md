@@ -13,6 +13,7 @@ https://your-domain.com/r/{platform}/{id}
 
 - **Pure static** — just HTML + CSS + vanilla JS. No build step, no server, no dependencies.
 - **Config-driven** — add or edit platforms by touching `platforms.json`. No code changes needed.
+- **Rich link previews** — paste a URL and instantly see a preview card with the real title and thumbnail before generating your redirect link.
 - **Private & safe** — runs entirely in the browser. Only domains on the allow-list are accepted; IDs are validated against per-platform regex before any redirect.
 - **Open source** — MIT-licensed. Fork it, self-host it, add your own platforms.
 
@@ -22,11 +23,29 @@ https://your-domain.com/r/{platform}/{id}
 
 1. Paste a URL (YouTube, Spotify, X, Instagram, Reddit, TikTok, Twitch, LinkedIn, Telegram, WhatsApp, Pinterest, …).
 2. The page matches the domain against `platforms.json`, runs the platform's regex extractors, and pulls out an `id`.
-3. You get a shareable link:
+3. A **link preview card** appears showing the real title and thumbnail of the content.
+4. You get a shareable link:
 
    ```
    https://your-domain.com/r/{platform}/{id}
    ```
+
+### Link preview
+
+When you paste a link, a preview card fetches metadata using a three-strategy waterfall:
+
+| Strategy | How | Platforms |
+|---|---|---|
+| **oEmbed** | Platform-native, no rate limits | YouTube, Vimeo, Reddit posts, Apple Music, Pinterest, X/Twitter posts |
+| **Direct CDN URL** | Predictable image URL, zero network fetch | YouTube thumbnails (`img.youtube.com`), GitHub owner avatar |
+| **[Microlink.io](https://microlink.io) OG scrape** | CORS-enabled free endpoint, reads Open Graph tags | Spotify, TikTok, Twitch, Telegram, WhatsApp, Threads, Discord, Maps, and more |
+
+> **Note:** LinkedIn and Instagram actively block all external crawlers at the network level. A rich preview isn't possible for those platforms without their official API.
+
+**For WhatsApp / Social Previews (Serverless Edge Function)**
+Social media crawlers (like WhatsApp, iMessage, and Twitter) do not run JavaScript, which means they cannot natively execute the above preview logic themselves. 
+To solve this, this project utilizes a **Netlify Edge Function** (`netlify/edge-functions/og-injector.js`). 
+Whenever a crawler fetches a `/r/*` redirect link, the edge function quickly runs the exact same metadata waterfall logic on Deno, dynamically injects the correct `<meta property="og:image">` and `<meta property="og:title">` tags into the raw HTML, and returns that HTML to the crawler immediately. This gives you rich previews on WhatsApp while maintaining essentially a "zero-backend" operational structure.
 
 ### Redirect (`/r/{platform}/{id}`)
 
@@ -135,7 +154,9 @@ Field reference:
 - URLs are matched against an **allow-list of domains**; anything else is rejected with a clear error.
 - The extracted id is validated against `idValidator` both when generating and when redirecting. Manipulated `/r/...` URLs with malformed ids won't redirect.
 - Templates only substitute a single `{id}` token — there's no arbitrary URL construction.
-- **No server, no logging, no analytics.** The app runs entirely in the user's browser. Links you generate and redirects you follow never leave the client.
+- **No central server.** The app logic runs entirely in the user's browser. Links you generate and redirects you follow never leave the client.
+- The link preview feature uses [Microlink.io](https://microlink.io)'s public CORS endpoint to fetch Open Graph metadata. Only the reconstructed `webLink` URL is sent to Microlink — no personal data.
+- The social app preview generator operates via a secure Netlify Edge Function which strictly follows the allowed config routes, acting as an ephemeral proxy strictly just to hydrate OG Meta tags for social crawlers like WhatsApp.
 
 ## Project layout
 
@@ -143,10 +164,17 @@ Field reference:
 open-deep-redirect/
 ├── index.html        # the entire app (plus an inline fallback copy of the config)
 ├── platforms.json    # the only file you need to edit to add platforms
-├── netlify.toml      # Netlify config (publish dir, rewrites, headers)
+├── netlify.toml      # Netlify config (publish dir, rewrites, edge functions, headers)
 ├── _redirects        # Netlify rewrite fallback
+├── netlify/
+│   └── edge-functions/
+│       └── og-injector.js       # Deno edge function injecting OG data for Whatsapp/iMessage
 ├── scripts/
-│   └── sync-inline-config.mjs   # embeds platforms.json into index.html
+│   ├── sync-inline-config.mjs   # embeds platforms.json into index.html
+│   └── update-contributors.mjs  # regenerates the contributors table in README.md
+├── .github/
+│   └── workflows/
+│       └── update-contributors.yml  # runs update-contributors.mjs on push to main
 ├── LICENSE
 └── README.md
 ```
@@ -164,7 +192,7 @@ Contributions are very welcome! The easiest and most valuable contribution is **
    node scripts/sync-inline-config.mjs
    ```
 4. Test locally with `python3 -m http.server 8080` (or any static server) and verify:
-   - Your URL is parsed correctly on the home page.
+   - Your URL is parsed correctly on the home page and the preview card shows correctly.
    - The generated `/r/{platform}/{id}` link opens the native app on a phone and falls back to the web.
 5. Open a pull request describing **what platform/content kind you added** and include a sample URL.
 
@@ -174,12 +202,13 @@ Contributions are very welcome! The easiest and most valuable contribution is **
 - Supporting new platforms (SoundCloud, Snapchat, Bluesky, Mastodon, etc.).
 - Improving the UI / accessibility.
 - Writing tests for the extractor regexes.
+- Adding a `previewHint` field to `platforms.json` so contributors can declare custom oEmbed or thumbnail URLs per platform.
 
 ### Ground rules
 
 - Keep the **zero-backend, zero-build** promise. Any dependency that needs a build step is out of scope.
 - Keep the **allow-list + regex validation** model. Don't add paths that accept arbitrary URLs.
-- Don't add tracking, analytics, or third-party scripts that make network calls.
+- Don't add tracking, analytics, or third-party scripts that make network calls (Microlink is the sole exception, used only for the optional preview card).
 - Match the existing code style — the project uses plain HTML/CSS/JS on purpose.
 
 ### Reporting bugs / requesting platforms
@@ -192,11 +221,42 @@ Open a [GitHub issue](../../issues) with:
 ## Acknowledgements
 
 - The services this project links to — logos, trademarks, and content remain the property of their respective owners. Open Deep Redirect only constructs URLs using public URL schemes; it does not proxy, cache, or serve any content from these services.
+- Link preview metadata is fetched via [Microlink.io](https://microlink.io) (open-graph scraping) and platform oEmbed endpoints. No content is cached or stored by this project.
 - Inspired by the long-standing frustration of sharing a Spotify / YouTube / Instagram link and having it open in the wrong place on someone else's phone.
 
 ## License
 
 Released under the [MIT License](./LICENSE). You are free to use, modify, self-host, and redistribute this project — just keep the copyright notice.
+
+---
+
+## Contributors
+
+Thanks to everyone who has contributed to this project! 🎉
+
+The table below is **auto-generated** by [`scripts/update-contributors.mjs`](./scripts/update-contributors.mjs) and kept in sync by a [GitHub Actions workflow](./.github/workflows/update-contributors.yml) that runs on every push to `main`.
+
+To regenerate it locally:
+
+```bash
+node scripts/update-contributors.mjs
+```
+
+<!-- CONTRIBUTORS_START -->
+<table>
+  <tr>
+    <td align="center" valign="top" width="120">
+      <a href="https://github.com/chandansgowda">
+        <img src="https://avatars.githubusercontent.com/u/41890434?v=4&s=80" width="64" height="64" alt="chandansgowda" style="border-radius:50%" />
+        <br /><sub><b>chandansgowda</b></sub>
+      </a>
+      <br /><sub>🔨 6 commits</sub>
+    </td>
+  </tr>
+</table>
+<!-- CONTRIBUTORS_END -->
+
+> Want to see your avatar here? [Contribute a platform or fix](../../issues) and open a pull request!
 
 ---
 
