@@ -63,10 +63,11 @@ export default async function (request, context) {
   let finalImage = null;
   let finalDescription = null;
 
-  // Function to gracefully interpolate the webLink URL 
+  // Function to gracefully interpolate the webLink URL, preserving path slashes
   const buildWebUrl = (template, val) => {
     if (!template) return null;
-    return template.replace(/\{id\}/g, encodeURIComponent(val));
+    const safeVal = val.split('/').map(encodeURIComponent).join('/');
+    return template.replace(/\{id\}/g, safeVal);
   };
 
   // Waterfall strategy to fetch metadata
