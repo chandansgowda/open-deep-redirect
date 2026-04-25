@@ -95,8 +95,18 @@ export default async function (request, context) {
           signal: controller.signal,
           headers: { "User-Agent": "facebookexternalhit/1.1; WhatsApp/2.21.12.21 A" }
         });
-        if (sRes.ok) {
-          const sHtml = await sRes.text();
+        if (sRes.ok && sRes.body) {
+          const reader = sRes.body.getReader();
+          const decoder = new TextDecoder();
+          let sHtml = "";
+          while (true) {
+            const { done, value } = await reader.read();
+            if (value) sHtml += decoder.decode(value, { stream: true });
+            if (done || sHtml.includes('</head>') || sHtml.length > 50000) {
+              try { reader.cancel(); } catch (e) {}
+              break;
+            }
+          }
           const descMatch = sHtml.match(/<meta[^>]*property="og:description"[^>]*content="([^"]+)"/i)
             || sHtml.match(/<meta[^>]*name="description"[^>]*content="([^"]+)"/i);
           if (descMatch && descMatch[1]) {
@@ -111,7 +121,9 @@ export default async function (request, context) {
             const imgMatch = sHtml.match(/<meta[^>]*property="og:image"[^>]*content="([^"]+)"/i);
             if (imgMatch && imgMatch[1]) {
               let src = imgMatch[1].replace(/&amp;/g, '&');
-              if (src.startsWith('/')) {
+              if (src.startsWith('//')) {
+                src = 'https:' + src;
+              } else if (src.startsWith('/')) {
                 const urlObj = new URL(webUrl);
                 src = urlObj.origin + src;
               }
