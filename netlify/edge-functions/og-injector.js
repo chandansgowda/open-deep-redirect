@@ -92,8 +92,8 @@ export default async function (request, context) {
     }
     
     // Strategy 3: Microlink fallback
-    // Only use for platforms that have no Native oEmbed OR if we still have absolutely nothing
-    if (!provider?.oembed && !provider?.thumbnail) {
+    // Use for platforms with no Native oEmbed, or if previous strategies failed to fetch the description/image.
+    if (!finalImage || !finalDescription) {
       const webUrl = buildWebUrl(config.webLink, ID_DECODED);
       if (webUrl) {
         const mRes = await fetch(`https://api.microlink.io/?url=${encodeURIComponent(webUrl)}`, { signal: controller.signal });
@@ -102,10 +102,10 @@ export default async function (request, context) {
           if (mData.status === "success" && mData.data) {
             finalTitle = mData.data.title || finalTitle;
             if (mData.data.image && mData.data.image.url) {
-              finalImage = mData.data.image.url;
+              finalImage = mData.data.image.url || finalImage;
             }
             if (mData.data.description) {
-              finalDescription = mData.data.description;
+              finalDescription = mData.data.description || finalDescription;
             }
           }
         }
@@ -122,24 +122,37 @@ export default async function (request, context) {
   let html = await response.text();
 
   // 5. Inject the metadata into the raw HTML string
+  const escapeReplacement = (str) => str.replace(/\$/g, '$$$$');
+
   const cleanTitle = finalTitle.replace(/"/g, '&quot;');
-  const titleTag = `<title>${cleanTitle} | Open Deep Redirect</title>`;
+  const cleanTitleStr = escapeReplacement(cleanTitle);
+  const titleTag = escapeReplacement(`<title>${cleanTitle} | Open Deep Redirect</title>`);
   
-  html = html.replace(/<title>.*?<\/title>/, titleTag);
-  html = html.replace(/<meta property="og:title" content="[^"]*"/, `<meta property="og:title" content="${cleanTitle}"`);
-  html = html.replace(/<meta name="twitter:title" content="[^"]*"/, `<meta name="twitter:title" content="${cleanTitle}"`);
+  html = html.replace(/<title>.*?<\/title>/i, titleTag);
+  html = html.replace(/<meta[^>]*property="og:title"[^>]*>/i, `<meta property="og:title" content="${cleanTitleStr}" />`);
+  html = html.replace(/<meta[^>]*name="twitter:title"[^>]*>/i, `<meta name="twitter:title" content="${cleanTitleStr}" />`);
 
   if (finalImage) {
     const cleanImage = finalImage.replace(/"/g, '&quot;');
-    html = html.replace(/<meta property="og:image" content="[^"]*"/, `<meta property="og:image" content="${cleanImage}"`);
-    html = html.replace(/<meta name="twitter:image" content="[^"]*"/, `<meta name="twitter:image" content="${cleanImage}"`);
+    const cleanImageStr = escapeReplacement(cleanImage);
+    html = html.replace(/<meta[^>]*property="og:image"[^>]*>/i, `<meta property="og:image" content="${cleanImageStr}" />`);
+    html = html.replace(/<meta[^>]*name="twitter:image"[^>]*>/i, `<meta name="twitter:image" content="${cleanImageStr}" />`);
+    
+    html = html.replace(/<meta[^>]*property="og:image:width"[^>]*>/ig, '');
+    html = html.replace(/<meta[^>]*property="og:image:height"[^>]*>/ig, '');
+  }
+
+  // Provide a smart fallback for description if the platform didn't return one (like YouTube oEmbed)
+  if (!finalDescription) {
+    finalDescription = `Redirect link to ${finalTitle} on ${config.name}`;
   }
 
   if (finalDescription) {
     const cleanDesc = finalDescription.replace(/[\r\n]+/g, ' ').replace(/"/g, '&quot;');
-    html = html.replace(/<meta name="description" content="[^"]*"/, `<meta name="description" content="${cleanDesc}"`);
-    html = html.replace(/<meta property="og:description" content="[^"]*"/, `<meta property="og:description" content="${cleanDesc}"`);
-    html = html.replace(/<meta name="twitter:description" content="[^"]*"/, `<meta name="twitter:description" content="${cleanDesc}"`);
+    const cleanDescStr = escapeReplacement(cleanDesc);
+    html = html.replace(/<meta[^>]*name="description"[^>]*>/i, `<meta name="description" content="${cleanDescStr}" />`);
+    html = html.replace(/<meta[^>]*property="og:description"[^>]*>/i, `<meta property="og:description" content="${cleanDescStr}" />`);
+    html = html.replace(/<meta[^>]*name="twitter:description"[^>]*>/i, `<meta name="twitter:description" content="${cleanDescStr}" />`);
   }
 
   // 6. Return the mutated HTML
