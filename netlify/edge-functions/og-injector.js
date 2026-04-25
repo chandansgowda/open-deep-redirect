@@ -52,6 +52,7 @@ export default async function (request, context) {
     },
     "github-repo": {
       thumbnail: (i) => `https://github.com/${i.split("/")[0]}.png?size=200`,
+      scrape: (i) => `https://github.com/${i}`
     },
     "pinterest-pin": {
       oembed: (i) => `https://www.pinterest.com/oembed.json?url=${encodeURIComponent("https://www.pinterest.com/pin/" + i + "/")}`,
@@ -85,8 +86,34 @@ export default async function (request, context) {
       }
     }
     
-    // Strategy 2: Direct Thumbnail Fallback
-    // If oEmbed failed (e.g. rate limit) or didn't return an image, try direct thumbnail.
+    // Strategy 2: Fast Native Scrape
+    // For platforms that serve static HTML with meta tags, bypassing rate-limited APIs
+    if (!finalDescription && provider && provider.scrape) {
+      const sRes = await fetch(provider.scrape(ID_DECODED), { 
+        signal: controller.signal,
+        headers: { "User-Agent": "facebookexternalhit/1.1; WhatsApp/2.21.12.21 A" }
+      });
+      if (sRes.ok) {
+        const sHtml = await sRes.text();
+        const descMatch = sHtml.match(/<meta[^>]*property="og:description"[^>]*content="([^"]+)"/i) 
+                       || sHtml.match(/<meta[^>]*name="description"[^>]*content="([^"]+)"/i);
+        if (descMatch && descMatch[1]) {
+          finalDescription = descMatch[1].replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
+        }
+        const titleMatch = sHtml.match(/<meta[^>]*property="og:title"[^>]*content="([^"]+)"/i) 
+                        || sHtml.match(/<title>([^<]+)<\/title>/i);
+        if (titleMatch && titleMatch[1]) {
+          finalTitle = titleMatch[1].replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
+        }
+        const imgMatch = sHtml.match(/<meta[^>]*property="og:image"[^>]*content="([^"]+)"/i);
+        if (imgMatch && imgMatch[1]) {
+          finalImage = imgMatch[1].replace(/&amp;/g, '&');
+        }
+      }
+    }
+
+    // Strategy 3: Direct Thumbnail Fallback
+    // If oEmbed/Scrape failed or didn't return an image, try direct thumbnail.
     if (!finalImage && provider && provider.thumbnail) {
       finalImage = provider.thumbnail(ID_DECODED);
     }
