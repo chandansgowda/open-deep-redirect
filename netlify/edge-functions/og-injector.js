@@ -109,7 +109,12 @@ export default async function (request, context) {
           if (!finalImage) {
             const imgMatch = sHtml.match(/<meta[^>]*property="og:image"[^>]*content="([^"]+)"/i);
             if (imgMatch && imgMatch[1]) {
-              finalImage = imgMatch[1].replace(/&amp;/g, '&');
+              let src = imgMatch[1].replace(/&amp;/g, '&');
+              if (src.startsWith('/')) {
+                const urlObj = new URL(webUrl);
+                src = urlObj.origin + src;
+              }
+              finalImage = src;
             }
           }
         }
@@ -124,10 +129,9 @@ export default async function (request, context) {
       finalImage = provider.thumbnail(ID_DECODED);
     }
 
-    // Strategy 3: Microlink fallback
+    // Strategy 4: Microlink fallback
     // Use for platforms with no Native oEmbed, or if previous strategies failed to fetch the description/image.
     if (!finalImage || !finalDescription) {
-      const webUrl = buildWebUrl(config.webLink, ID_DECODED);
       if (webUrl) {
         const mRes = await fetch(`https://api.microlink.io/?url=${encodeURIComponent(webUrl)}`, { signal: controller.signal });
         if (mRes.ok) {
