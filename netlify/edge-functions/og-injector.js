@@ -61,6 +61,7 @@ export default async function (request, context) {
   const provider = PREVIEW_PROVIDERS[platformKey];
   let finalTitle = config.name || platformKey;
   let finalImage = null;
+  let finalDescription = null;
 
   // Function to gracefully interpolate the webLink URL 
   const buildWebUrl = (template, val) => {
@@ -80,6 +81,7 @@ export default async function (request, context) {
         const oData = await oRes.json();
         finalTitle = oData.title || oData.author_name || finalTitle;
         finalImage = oData.thumbnail_url || null;
+        finalDescription = oData.description || null;
       }
     }
     
@@ -101,6 +103,9 @@ export default async function (request, context) {
             finalTitle = mData.data.title || finalTitle;
             if (mData.data.image && mData.data.image.url) {
               finalImage = mData.data.image.url;
+            }
+            if (mData.data.description) {
+              finalDescription = mData.data.description;
             }
           }
         }
@@ -128,6 +133,13 @@ export default async function (request, context) {
     const cleanImage = finalImage.replace(/"/g, '&quot;');
     html = html.replace(/<meta property="og:image" content="[^"]*"/, `<meta property="og:image" content="${cleanImage}"`);
     html = html.replace(/<meta name="twitter:image" content="[^"]*"/, `<meta name="twitter:image" content="${cleanImage}"`);
+  }
+
+  if (finalDescription) {
+    const cleanDesc = finalDescription.replace(/[\r\n]+/g, ' ').replace(/"/g, '&quot;');
+    html = html.replace(/<meta name="description" content="[^"]*"/, `<meta name="description" content="${cleanDesc}"`);
+    html = html.replace(/<meta property="og:description" content="[^"]*"/, `<meta property="og:description" content="${cleanDesc}"`);
+    html = html.replace(/<meta name="twitter:description" content="[^"]*"/, `<meta name="twitter:description" content="${cleanDesc}"`);
   }
 
   // 6. Return the mutated HTML
