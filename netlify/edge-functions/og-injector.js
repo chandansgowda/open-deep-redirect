@@ -74,9 +74,12 @@ const PROVIDERS = {
     description: (i) => `Browse r/${i} on Reddit. Tap to open in the Reddit app.`,
   },
   "linkedin-profile": {
+    // LinkedIn blocks all crawlers — use unavatar which can resolve LinkedIn avatars
+    thumbnail:   (i) => `https://unavatar.io/linkedin/${i}`,
     description: (i) => `View ${i}'s profile on LinkedIn. Tap to open in the LinkedIn app.`,
   },
   "linkedin-company": {
+    thumbnail:   (i) => `https://unavatar.io/linkedin/${i}`,
     description: (i) => `View ${i} on LinkedIn. Tap to open in the LinkedIn app.`,
   },
   "pinterest-pin": {
