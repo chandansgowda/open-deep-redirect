@@ -192,18 +192,19 @@ export default async function (request, context) {
     html = html.replace(/<meta[^>]*property="og:image:height"[^>]*>/ig, '');
   }
 
-  // Provide a smart fallback for description if the platform didn't return one (like YouTube oEmbed)
+  // Provide a smart fallback for description if the platform didn't return one
   if (!finalDescription) {
-    finalDescription = `Redirect link to ${finalTitle} on ${config.name}`;
+    // Build a descriptive fallback based on platform kind
+    const kind = config.kind || "content";
+    finalDescription = `Open this ${kind.toLowerCase()} on ${config.name}. Redirect link that opens directly in the native app with web fallback.`;
   }
 
-  if (finalDescription) {
-    const cleanDesc = finalDescription.replace(/[\r\n]+/g, ' ').replace(/"/g, '&quot;');
-    const cleanDescStr = escapeReplacement(cleanDesc);
-    html = html.replace(/<meta[^>]*name="description"[^>]*>/i, `<meta name="description" content="${cleanDescStr}" />`);
-    html = html.replace(/<meta[^>]*property="og:description"[^>]*>/i, `<meta property="og:description" content="${cleanDescStr}" />`);
-    html = html.replace(/<meta[^>]*name="twitter:description"[^>]*>/i, `<meta name="twitter:description" content="${cleanDescStr}" />`);
-  }
+  // Always inject description (we now guarantee finalDescription is set)
+  const cleanDesc = finalDescription.replace(/[\r\n]+/g, ' ').replace(/"/g, '&quot;');
+  const cleanDescStr = escapeReplacement(cleanDesc);
+  html = html.replace(/<meta[^>]*name="description"[^>]*>/i, `<meta name="description" content="${cleanDescStr}" />`);
+  html = html.replace(/<meta[^>]*property="og:description"[^>]*>/i, `<meta property="og:description" content="${cleanDescStr}" />`);
+  html = html.replace(/<meta[^>]*name="twitter:description"[^>]*>/i, `<meta name="twitter:description" content="${cleanDescStr}" />`);
 
   // 6. Return the mutated HTML
   return new Response(html, {
