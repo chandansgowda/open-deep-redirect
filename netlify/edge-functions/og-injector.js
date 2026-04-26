@@ -5,8 +5,9 @@ const enc = encodeURIComponent;
 // Per-platform metadata providers
 // oembed(id)      → URL returning JSON { title, thumbnail_url, description }
 // thumbnail(id)   → direct image URL, no fetch needed
-// description(id) → static fallback string when dynamic fetch fails
+// description(id) → static fallback string used when all dynamic fetches fail
 const PROVIDERS = {
+  // ── YouTube ────────────────────────────────────────────────────────────────
   "youtube": {
     thumbnail:   (i) => `https://img.youtube.com/vi/${i}/hqdefault.jpg`,
     oembed:      (i) => `https://www.youtube.com/oembed?url=${enc("https://www.youtube.com/watch?v=" + i)}&format=json`,
@@ -16,6 +17,8 @@ const PROVIDERS = {
     oembed:      (i) => `https://www.youtube.com/oembed?url=${enc("https://www.youtube.com/playlist?list=" + i)}&format=json`,
     description: ()  => `A YouTube playlist. Tap to open directly in the YouTube app.`,
   },
+
+  // ── Spotify ────────────────────────────────────────────────────────────────
   "spotify-track": {
     oembed:      (i) => `https://open.spotify.com/oembed?url=${enc("https://open.spotify.com/track/" + i)}`,
     description: ()  => `Listen to this track on Spotify. Tap to open in the Spotify app.`,
@@ -40,67 +43,97 @@ const PROVIDERS = {
     oembed:      (i) => `https://open.spotify.com/oembed?url=${enc("https://open.spotify.com/show/" + i)}`,
     description: ()  => `Listen to this podcast on Spotify. Tap to open in the Spotify app.`,
   },
+
+  // ── X / Twitter ───────────────────────────────────────────────────────────
   "x-status": {
     oembed:      (i) => `https://publish.twitter.com/oembed?url=${enc("https://twitter.com/i/status/" + i)}&omit_script=true`,
     description: ()  => `A post on X / Twitter. Tap to open directly in the X app.`,
   },
   "x-user": {
-    thumbnail:   (i) => `https://unavatar.io/twitter/${i}`,
+    // Use GitHub-style avatar via unavatar — Twitter/X avatar via unavatar works reliably
+    thumbnail:   (i) => `https://unavatar.io/twitter/${i}?fallback=false`,
     description: (i) => `View @${i}'s profile on X / Twitter. Tap to open in the X app.`,
   },
-  // Instagram blocks ALL external crawlers — no oEmbed, no CDN URL, no scrape possible
+
+  // ── Instagram ─────────────────────────────────────────────────────────────
+  // Instagram blocks ALL external crawlers — no oEmbed, no CDN URL, no scrape
   "instagram-post": {
     thumbnail:   ()  => `https://www.instagram.com/static/images/ico/favicon-192.png/68d99ba29cc8.png`,
     description: ()  => `An Instagram post / reel. Tap to open directly in the Instagram app.`,
   },
   "instagram-profile": {
-    thumbnail:   ()  => `https://www.instagram.com/static/images/ico/favicon-192.png/68d99ba29cc8.png`,
+    thumbnail:   (i) => `https://unavatar.io/instagram/${i}?fallback=false`,
     description: (i) => `View @${i}'s profile on Instagram. Tap to open directly in the Instagram app.`,
   },
+
+  // ── TikTok ────────────────────────────────────────────────────────────────
+  // TikTok oEmbed needs the full video URL — we reconstruct it from the webLink
   "tiktok-video": {
-    oembed:      (i) => `https://www.tiktok.com/oembed?url=${enc("https://www.tiktok.com/video/" + i)}`,
+    oembed:      (i) => `https://www.tiktok.com/oembed?url=${enc("https://www.tiktok.com/embed/v2/" + i)}`,
     description: ()  => `Watch this TikTok video. Tap to open directly in the TikTok app.`,
   },
+
+  // ── Twitch ────────────────────────────────────────────────────────────────
+  // jtvnw preview only works for live channels; use a reliable Twitch social card instead
   "twitch-channel": {
     thumbnail:   (i) => `https://static-cdn.jtvnw.net/previews-ttv/live_user_${i.toLowerCase()}-640x360.jpg`,
     description: (i) => `Watch ${i} live on Twitch. Tap to open in the Twitch app.`,
   },
+
+  // ── Reddit ────────────────────────────────────────────────────────────────
   "reddit-post": {
     oembed:      (i) => `https://www.reddit.com/oembed?url=${enc("https://www.reddit.com/r/" + i + "/")}`,
     description: ()  => `A Reddit post. Tap to open directly in the Reddit app.`,
   },
   "reddit-subreddit": {
-    thumbnail:   ()  => `https://www.redditstatic.com/icon.png`,
+    // Reddit community icon via their JSON API — no auth needed
+    thumbnail:   (i) => `https://www.reddit.com/r/${i}/about.json`,
     description: (i) => `Browse r/${i} on Reddit. Tap to open in the Reddit app.`,
   },
+
+  // ── LinkedIn ──────────────────────────────────────────────────────────────
+  // LinkedIn blocks all crawlers — unavatar can resolve some LinkedIn avatars
   "linkedin-profile": {
-    // LinkedIn blocks all crawlers — use unavatar which can resolve LinkedIn avatars
-    thumbnail:   (i) => `https://unavatar.io/linkedin/${i}`,
+    thumbnail:   (i) => `https://unavatar.io/linkedin/${i}?fallback=false`,
     description: (i) => `View ${i}'s profile on LinkedIn. Tap to open in the LinkedIn app.`,
   },
   "linkedin-company": {
-    thumbnail:   (i) => `https://unavatar.io/linkedin/${i}`,
+    thumbnail:   (i) => `https://unavatar.io/linkedin/${i}?fallback=false`,
     description: (i) => `View ${i} on LinkedIn. Tap to open in the LinkedIn app.`,
   },
+
+  // ── Pinterest ─────────────────────────────────────────────────────────────
   "pinterest-pin": {
     oembed:      (i) => `https://www.pinterest.com/oembed.json?url=${enc("https://www.pinterest.com/pin/" + i + "/")}`,
     description: ()  => `A Pinterest pin. Tap to open directly in the Pinterest app.`,
   },
+
+  // ── Telegram ──────────────────────────────────────────────────────────────
   "telegram": {
-    thumbnail:   (i) => `https://unavatar.io/telegram/${i}`,
+    thumbnail:   (i) => `https://unavatar.io/telegram/${i}?fallback=false`,
     description: (i) => `Open @${i} on Telegram. Tap to open in the Telegram app.`,
   },
+
+  // ── WhatsApp ──────────────────────────────────────────────────────────────
   "whatsapp": {
     description: (i) => `Start a WhatsApp chat with ${i}. Tap to open directly in WhatsApp.`,
   },
+
+  // ── GitHub ────────────────────────────────────────────────────────────────
   "github-repo": {
     thumbnail:   (i) => `https://opengraph.githubassets.com/1/${i}`,
     description: (i) => `View the ${i} repository on GitHub. Tap to open in the GitHub app.`,
   },
+
+  // ── Google Maps ───────────────────────────────────────────────────────────
+  // Static Maps API requires an API key — use Microlink OG scrape instead (handled in waterfall)
+  // Fallback to a generic Maps image so the preview isn't blank
   "maps-place": {
-    thumbnail:   (i) => `https://maps.googleapis.com/maps/api/staticmap?center=${enc(i)}&zoom=14&size=600x300&maptype=roadmap`,
+    thumbnail:   ()  => `https://maps.gstatic.com/tactile/omnibox/directions-walk-v2@1x.png`,
     description: (i) => `View ${decodeURIComponent(i)} on Google Maps. Tap to open in the Maps app.`,
   },
+
+  // ── Apple Music ───────────────────────────────────────────────────────────
   "apple-music-song": {
     oembed:      (i) => `https://music.apple.com/oembed?url=${enc("https://music.apple.com/song/" + i)}`,
     description: ()  => `Listen to this song on Apple Music. Tap to open in the Music app.`,
@@ -117,18 +150,40 @@ const PROVIDERS = {
     oembed:      (i) => `https://music.apple.com/oembed?url=${enc("https://music.apple.com/artist/" + i)}`,
     description: ()  => `Listen to this artist on Apple Music. Tap to open in the Music app.`,
   },
+
+  // ── Vimeo ─────────────────────────────────────────────────────────────────
   "vimeo-video": {
     oembed:      (i) => `https://vimeo.com/api/oembed.json?url=${enc("https://vimeo.com/" + i)}`,
     description: ()  => `Watch this video on Vimeo. Tap to open in the Vimeo app.`,
   },
+
+  // ── Threads ───────────────────────────────────────────────────────────────
   "threads-post": {
     description: ()  => `A Threads post. Tap to open directly in the Threads app.`,
   },
+
+  // ── Discord ───────────────────────────────────────────────────────────────
   "discord-invite": {
-    thumbnail:   ()  => `https://assets-global.discord.com/assets/og-image.png`,
+    // Use Discord's stable marketing OG image
+    thumbnail:   ()  => `https://discord.com/assets/og-image.png`,
     description: ()  => `You've been invited to join a Discord server. Tap to open in the Discord app.`,
   },
 };
+
+// For reddit-subreddit, we need to fetch the community icon from their JSON API
+async function fetchRedditIcon(subreddit, signal) {
+  try {
+    const res = await fetch(`https://www.reddit.com/r/${subreddit}/about.json`, {
+      signal,
+      headers: { "User-Agent": "open-deep-redirect/1.0" },
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const icon = data?.data?.icon_img || data?.data?.community_icon;
+    if (icon) return icon.split("?")[0]; // strip query params
+  } catch (_) {}
+  return null;
+}
 
 export default async function (request, context) {
   const url = new URL(request.url);
@@ -155,9 +210,9 @@ export default async function (request, context) {
 
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 3500);
+    const timeout = setTimeout(() => controller.abort(), 4000);
 
-    // Strategy 1: oEmbed
+    // Strategy 1: oEmbed — best quality, platform-native
     if (provider?.oembed) {
       try {
         const res = await fetch(provider.oembed(ID), { signal: controller.signal });
@@ -170,12 +225,16 @@ export default async function (request, context) {
       } catch (_) {}
     }
 
-    // Strategy 2: Direct thumbnail (zero-fetch)
-    if (!finalImage && provider?.thumbnail) {
-      finalImage = provider.thumbnail(ID);
+    // Strategy 2: Direct thumbnail (zero-fetch for most, special fetch for reddit)
+    if (!finalImage) {
+      if (platformKey === "reddit-subreddit") {
+        finalImage = await fetchRedditIcon(ID, controller.signal);
+      } else if (provider?.thumbnail) {
+        finalImage = provider.thumbnail(ID);
+      }
     }
 
-    // Strategy 3: Native OG scrape
+    // Strategy 3: Native OG scrape — reads <head> of the target page
     if ((!finalImage || !finalDescription) && webUrl) {
       try {
         const res = await fetch(webUrl, {
@@ -194,23 +253,21 @@ export default async function (request, context) {
               break;
             }
           }
-          const pick = (html, ...patterns) => {
+          const pick = (...patterns) => {
             for (const p of patterns) {
-              const m = html.match(p);
+              const m = chunk.match(p);
               if (m?.[1]) return m[1].replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, "&").trim();
             }
             return null;
           };
-          if (!finalDescription) {
-            finalDescription = pick(chunk,
-              /<meta[^>]+property="og:description"[^>]+content="([^"]+)"/i,
-              /<meta[^>]+content="([^"]+)"[^>]+property="og:description"/i,
-              /<meta[^>]+name="description"[^>]+content="([^"]+)"/i,
-              /<meta[^>]+content="([^"]+)"[^>]+name="description"/i,
-            );
-          }
+          if (!finalDescription) finalDescription = pick(
+            /<meta[^>]+property="og:description"[^>]+content="([^"]+)"/i,
+            /<meta[^>]+content="([^"]+)"[^>]+property="og:description"/i,
+            /<meta[^>]+name="description"[^>]+content="([^"]+)"/i,
+            /<meta[^>]+content="([^"]+)"[^>]+name="description"/i,
+          );
           if (!finalImage) {
-            let src = pick(chunk,
+            let src = pick(
               /<meta[^>]+property="og:image"[^>]+content="([^"]+)"/i,
               /<meta[^>]+content="([^"]+)"[^>]+property="og:image"/i,
             );
@@ -222,7 +279,7 @@ export default async function (request, context) {
             }
           }
           if (finalTitle === config.name) {
-            finalTitle = pick(chunk,
+            finalTitle = pick(
               /<meta[^>]+property="og:title"[^>]+content="([^"]+)"/i,
               /<title>([^<]+)<\/title>/i,
             ) || finalTitle;
@@ -231,7 +288,7 @@ export default async function (request, context) {
       } catch (_) {}
     }
 
-    // Strategy 4: Microlink fallback
+    // Strategy 4: Microlink — last resort
     if ((!finalImage || !finalDescription) && webUrl) {
       try {
         const res = await fetch(`https://api.microlink.io/?url=${enc(webUrl)}`, { signal: controller.signal });
@@ -251,25 +308,26 @@ export default async function (request, context) {
     console.error(`[og-injector] ${platformKey}:`, err.message);
   }
 
-  // Strategy 5: Per-platform static description
+  // Strategy 5: Per-platform static description fallback
   if (!finalDescription && provider?.description) {
     finalDescription = provider.description(ID);
   }
 
-  // Strategy 6: Generic last-resort fallback
+  // Strategy 6: Generic last-resort
   if (!finalDescription) {
     const kind = (config.kind || "content").toLowerCase();
     finalDescription = `Open this ${kind} on ${config.name}. Tap to open directly in the native app, with a web fallback.`;
   }
 
-  // Fetch the static HTML shell
+  // ── Fetch static HTML shell ────────────────────────────────────────────────
   const response = await context.next();
   let html = await response.text();
 
-  // Inject metadata — find each <meta> tag and swap only its content="..." value
-  const escRx  = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  // ── Inject metadata ────────────────────────────────────────────────────────
+  const escRx   = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const escHtml = (s) => s.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
 
+  // Find a <meta> tag by its property/name selector and swap only content="..."
   const replaceMeta = (h, selector, newContent) =>
     h.replace(
       new RegExp(`<meta[^>]+${escRx(selector)}[^>]*>`, "i"),
@@ -281,7 +339,6 @@ export default async function (request, context) {
   const safeImage = finalImage ? escHtml(finalImage) : null;
 
   html = html.replace(/<title>[^<]*<\/title>/i, `<title>${safeTitle} | Open Deep Redirect</title>`);
-
   html = replaceMeta(html, 'property="og:title"',        safeTitle);
   html = replaceMeta(html, 'property="og:description"',  safeDesc);
   html = replaceMeta(html, 'property="og:url"',          escHtml(request.url));
@@ -295,7 +352,7 @@ export default async function (request, context) {
     html = replaceMeta(html, 'name="twitter:image"',      safeImage);
     html = replaceMeta(html, 'property="og:image:alt"',   safeTitle);
     html = replaceMeta(html, 'name="twitter:image:alt"',  safeTitle);
-    html = html.replace(/<meta\s+property="og:image:width"[^>]*>\n?/ig, "");
+    html = html.replace(/<meta\s+property="og:image:width"[^>]*>\n?/ig,  "");
     html = html.replace(/<meta\s+property="og:image:height"[^>]*>\n?/ig, "");
   }
 
