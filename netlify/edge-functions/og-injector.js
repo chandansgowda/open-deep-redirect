@@ -45,7 +45,8 @@ export default async function (request, context) {
       oembed: (i) => `https://music.apple.com/oembed?url=${encodeURIComponent("https://music.apple.com/artist/" + i)}`,
     },
     "github-repo": {
-      thumbnail: (i) => `https://github.com/${i.split("/")[0]}.png?size=200`,
+      // GitHub's social preview card — same image WhatsApp/iMessage show natively
+      thumbnail: (i) => `https://opengraph.githubassets.com/1/${i}`,
     },
     "pinterest-pin": {
       oembed: (i) => `https://www.pinterest.com/oembed.json?url=${encodeURIComponent("https://www.pinterest.com/pin/" + i + "/")}`,
