@@ -22,55 +22,61 @@ export default async function (request, context) {
     "youtube": {
       thumbnail:   (i) => `https://img.youtube.com/vi/${i}/hqdefault.jpg`,
       oembed:      (i) => `https://www.youtube.com/oembed?url=${enc("https://www.youtube.com/watch?v=" + i)}&format=json`,
+      description: (i) => `Watch this video on YouTube. Tap to open directly in the YouTube app.`,
     },
     "youtube-playlist": {
       oembed:      (i) => `https://www.youtube.com/oembed?url=${enc("https://www.youtube.com/playlist?list=" + i)}&format=json`,
-      // Playlist oEmbed returns no thumbnail — fall back to first video thumb via scrape
-      description: (i) => `A YouTube playlist. Tap to open in the YouTube app.`,
+      description: (i) => `A YouTube playlist. Tap to open directly in the YouTube app.`,
     },
 
     // ── Spotify ───────────────────────────────────────────────────────────────
-    // Spotify's embed endpoint returns OG tags with album art — scrape it
     "spotify-track": {
       oembed:      (i) => `https://open.spotify.com/oembed?url=${enc("https://open.spotify.com/track/" + i)}`,
+      description: (i) => `Listen to this track on Spotify. Tap to open in the Spotify app.`,
     },
     "spotify-album": {
       oembed:      (i) => `https://open.spotify.com/oembed?url=${enc("https://open.spotify.com/album/" + i)}`,
+      description: (i) => `Listen to this album on Spotify. Tap to open in the Spotify app.`,
     },
     "spotify-playlist": {
       oembed:      (i) => `https://open.spotify.com/oembed?url=${enc("https://open.spotify.com/playlist/" + i)}`,
+      description: (i) => `Listen to this playlist on Spotify. Tap to open in the Spotify app.`,
     },
     "spotify-artist": {
       oembed:      (i) => `https://open.spotify.com/oembed?url=${enc("https://open.spotify.com/artist/" + i)}`,
+      description: (i) => `Listen to this artist on Spotify. Tap to open in the Spotify app.`,
     },
     "spotify-episode": {
       oembed:      (i) => `https://open.spotify.com/oembed?url=${enc("https://open.spotify.com/episode/" + i)}`,
+      description: (i) => `Listen to this podcast episode on Spotify. Tap to open in the Spotify app.`,
     },
     "spotify-show": {
       oembed:      (i) => `https://open.spotify.com/oembed?url=${enc("https://open.spotify.com/show/" + i)}`,
+      description: (i) => `Listen to this podcast on Spotify. Tap to open in the Spotify app.`,
     },
 
     // ── X / Twitter ───────────────────────────────────────────────────────────
     "x-status": {
       oembed:      (i) => `https://publish.twitter.com/oembed?url=${enc("https://twitter.com/i/status/" + i)}&omit_script=true`,
+      description: (i) => `A post on X / Twitter. Tap to open directly in the X app.`,
     },
     "x-user": {
       thumbnail:   (i) => `https://unavatar.io/twitter/${i}`,
-      description: (i) => `View @${i}'s profile on X / Twitter. Tap to open in the app.`,
+      description: (i) => `View @${i}'s profile on X / Twitter. Tap to open in the X app.`,
     },
 
     // ── Instagram ─────────────────────────────────────────────────────────────
-    // Instagram blocks all external crawlers — use fallback description + icon color
     "instagram-post": {
-      description: (i) => `An Instagram post. Tap to open directly in the Instagram app.`,
+      description: () => `An Instagram post. Tap to open directly in the Instagram app.`,
     },
     "instagram-profile": {
-      description: (i) => `View this Instagram profile. Tap to open directly in the Instagram app.`,
+      description: () => `View this Instagram profile. Tap to open directly in the Instagram app.`,
     },
 
     // ── TikTok ────────────────────────────────────────────────────────────────
     "tiktok-video": {
       oembed:      (i) => `https://www.tiktok.com/oembed?url=${enc("https://www.tiktok.com/video/" + i)}`,
+      description: (i) => `Watch this TikTok video. Tap to open directly in the TikTok app.`,
     },
 
     // ── Twitch ────────────────────────────────────────────────────────────────
@@ -82,6 +88,7 @@ export default async function (request, context) {
     // ── Reddit ────────────────────────────────────────────────────────────────
     "reddit-post": {
       oembed:      (i) => `https://www.reddit.com/oembed?url=${enc("https://www.reddit.com/r/" + i + "/")}`,
+      description: (i) => `A Reddit post. Tap to open directly in the Reddit app.`,
     },
     "reddit-subreddit": {
       thumbnail:   (i) => `https://www.redditstatic.com/icon.png`,
@@ -89,17 +96,17 @@ export default async function (request, context) {
     },
 
     // ── LinkedIn ──────────────────────────────────────────────────────────────
-    // LinkedIn blocks all crawlers
     "linkedin-profile": {
-      description: (i) => `View this LinkedIn profile. Tap to open in the LinkedIn app.`,
+      description: (i) => `View ${i}'s profile on LinkedIn. Tap to open in the LinkedIn app.`,
     },
     "linkedin-company": {
-      description: (i) => `View this company on LinkedIn. Tap to open in the LinkedIn app.`,
+      description: (i) => `View ${i} on LinkedIn. Tap to open in the LinkedIn app.`,
     },
 
     // ── Pinterest ─────────────────────────────────────────────────────────────
     "pinterest-pin": {
       oembed:      (i) => `https://www.pinterest.com/oembed.json?url=${enc("https://www.pinterest.com/pin/" + i + "/")}`,
+      description: (i) => `A Pinterest pin. Tap to open directly in the Pinterest app.`,
     },
 
     // ── Telegram ──────────────────────────────────────────────────────────────
@@ -110,13 +117,13 @@ export default async function (request, context) {
 
     // ── WhatsApp ──────────────────────────────────────────────────────────────
     "whatsapp": {
-      description: (i) => `Start a WhatsApp chat. Tap to open directly in WhatsApp.`,
+      description: (i) => `Start a WhatsApp chat with ${i}. Tap to open directly in WhatsApp.`,
     },
 
     // ── GitHub ────────────────────────────────────────────────────────────────
     "github-repo": {
       thumbnail:   (i) => `https://opengraph.githubassets.com/1/${i}`,
-      // description comes from native scrape of github.com/{id}
+      description: (i) => `View the ${i} repository on GitHub. Tap to open in the GitHub app.`,
     },
 
     // ── Google Maps ───────────────────────────────────────────────────────────
@@ -128,31 +135,36 @@ export default async function (request, context) {
     // ── Apple Music ───────────────────────────────────────────────────────────
     "apple-music-song": {
       oembed:      (i) => `https://music.apple.com/oembed?url=${enc("https://music.apple.com/song/" + i)}`,
+      description: (i) => `Listen to this song on Apple Music. Tap to open in the Music app.`,
     },
     "apple-music-album": {
       oembed:      (i) => `https://music.apple.com/oembed?url=${enc("https://music.apple.com/album/" + i)}`,
+      description: (i) => `Listen to this album on Apple Music. Tap to open in the Music app.`,
     },
     "apple-music-playlist": {
       oembed:      (i) => `https://music.apple.com/oembed?url=${enc("https://music.apple.com/playlist/" + i)}`,
+      description: (i) => `Listen to this playlist on Apple Music. Tap to open in the Music app.`,
     },
     "apple-music-artist": {
       oembed:      (i) => `https://music.apple.com/oembed?url=${enc("https://music.apple.com/artist/" + i)}`,
+      description: (i) => `Listen to this artist on Apple Music. Tap to open in the Music app.`,
     },
 
     // ── Vimeo ─────────────────────────────────────────────────────────────────
     "vimeo-video": {
       oembed:      (i) => `https://vimeo.com/api/oembed.json?url=${enc("https://vimeo.com/" + i)}`,
+      description: (i) => `Watch this video on Vimeo. Tap to open in the Vimeo app.`,
     },
 
     // ── Threads ───────────────────────────────────────────────────────────────
     "threads-post": {
-      description: (i) => `A Threads post. Tap to open directly in the Threads app.`,
+      description: () => `A Threads post. Tap to open directly in the Threads app.`,
     },
 
     // ── Discord ───────────────────────────────────────────────────────────────
     "discord-invite": {
-      thumbnail:   (_) => `https://assets-global.discord.com/assets/og-image.png`,
-      description: (i) => `Join the Discord server. Tap to open the invite in the Discord app.`,
+      thumbnail:   () => `https://assets-global.discord.com/assets/og-image.png`,
+      description: (i) => `You've been invited to join a Discord server. Tap to open in the Discord app.`,
     },
   };
 
