@@ -6,17 +6,14 @@ export default async function (request, context) {
   const match = url.pathname.match(/^\/r\/([^\/]+)\/(.+)$/);
 
   if (!match) {
-    // Not a valid route, let the normal static routing handle it
     return context.next();
   }
 
   const platformKey = decodeURIComponent(match[1]);
-  const id = match[2]; // keep url-encoded format for id since it may contain slashes
+  const id = match[2];
 
-  // 2. Read the platform config from the imported JSON
+  // 2. Read the platform config
   const config = siteConfig.platforms[platformKey];
-
-  // If the platform isn't valid, just return the default page
   if (!config) return context.next();
 
   // 3. Replicate PREVIEW_PROVIDERS logic locally
@@ -63,7 +60,7 @@ export default async function (request, context) {
   let finalImage = null;
   let finalDescription = null;
 
-  // Function to gracefully interpolate the webLink URL, preserving path slashes
+  // Interpolate webLink template, preserving path slashes
   const buildWebUrl = (template, val) => {
     if (!template) return null;
     const safeVal = val.split('/').map(encodeURIComponent).join('/');
@@ -73,21 +70,22 @@ export default async function (request, context) {
   // Waterfall strategy to fetch metadata
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 2500); // Strict 2.5s timeout for Edge Function
+    const timeout = setTimeout(() => controller.abort(), 2500);
 
+    // Strategy 1: oEmbed
     if (provider && provider.oembed) {
-      // Strategy 1: oEmbed
-      const oRes = await fetch(provider.oembed(ID_DECODED), { signal: controller.signal });
-      if (oRes.ok) {
-        const oData = await oRes.json();
-        finalTitle = oData.title || oData.author_name || finalTitle;
-        finalImage = oData.thumbnail_url || null;
-        finalDescription = oData.description || null;
-      }
+      try {
+        const oRes = await fetch(provider.oembed(ID_DECODED), { signal: controller.signal });
+        if (oRes.ok) {
+          const oData = await oRes.json();
+          finalTitle = oData.title || oData.author_name || finalTitle;
+          finalImage = oData.thumbnail_url || null;
+          finalDescription = oData.description || null;
+        }
+      } catch (e) {}
     }
 
-    // Strategy 2: Fast Native Scrape
-    // For platforms that serve static HTML with meta tags, bypassing rate-limited APIs
+    // Strategy 2: Fast Native Scrape (reads og: meta tags from the page head)
     const webUrl = buildWebUrl(config.webLink, ID_DECODED);
     if ((!finalDescription || !finalImage) && webUrl) {
       try {
@@ -107,112 +105,118 @@ export default async function (request, context) {
               break;
             }
           }
-          const descMatch = sHtml.match(/<meta[^>]*property="og:description"[^>]*content="([^"]+)"/i)
-            || sHtml.match(/<meta[^>]*name="description"[^>]*content="([^"]+)"/i);
-          if (descMatch && descMatch[1]) {
-            finalDescription = descMatch[1].replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
+          if (!finalDescription) {
+            const descMatch = sHtml.match(/<meta[^>]*property="og:description"[^>]*content="([^"]+)"/i)
+              || sHtml.match(/<meta[^>]*content="([^"]+)"[^>]*property="og:description"/i)
+              || sHtml.match(/<meta[^>]*name="description"[^>]*content="([^"]+)"/i);
+            if (descMatch && descMatch[1]) {
+              finalDescription = descMatch[1].replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
+            }
           }
-          const titleMatch = sHtml.match(/<meta[^>]*property="og:title"[^>]*content="([^"]+)"/i)
-            || sHtml.match(/<title>([^<]+)<\/title>/i);
-          if (titleMatch && titleMatch[1]) {
-            finalTitle = titleMatch[1].replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
+          if (!finalTitle || finalTitle === config.name) {
+            const titleMatch = sHtml.match(/<meta[^>]*property="og:title"[^>]*content="([^"]+)"/i)
+              || sHtml.match(/<title>([^<]+)<\/title>/i);
+            if (titleMatch && titleMatch[1]) {
+              finalTitle = titleMatch[1].replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
+            }
           }
           if (!finalImage) {
-            const imgMatch = sHtml.match(/<meta[^>]*property="og:image"[^>]*content="([^"]+)"/i);
+            const imgMatch = sHtml.match(/<meta[^>]*property="og:image"[^>]*content="([^"]+)"/i)
+              || sHtml.match(/<meta[^>]*content="([^"]+)"[^>]*property="og:image"/i);
             if (imgMatch && imgMatch[1]) {
               let src = imgMatch[1].replace(/&amp;/g, '&');
-              if (src.startsWith('//')) {
-                src = 'https:' + src;
-              } else if (src.startsWith('/')) {
-                const urlObj = new URL(webUrl);
-                src = urlObj.origin + src;
-              }
+              if (src.startsWith('//')) src = 'https:' + src;
+              else if (src.startsWith('/')) src = new URL(webUrl).origin + src;
               finalImage = src;
             }
           }
         }
-      } catch (err) {
-        // Native scrape failed (e.g. timeout or network error), proceed gracefully
-      }
+      } catch (err) {}
     }
 
-    // Strategy 3: Direct Thumbnail Fallback
-    // If oEmbed/Scrape failed or didn't return an image, try direct thumbnail.
+    // Strategy 3: Direct thumbnail (e.g. YouTube, GitHub)
     if (!finalImage && provider && provider.thumbnail) {
       finalImage = provider.thumbnail(ID_DECODED);
     }
 
     // Strategy 4: Microlink fallback
-    // Use for platforms with no Native oEmbed, or if previous strategies failed to fetch the description/image.
-    if (!finalImage || !finalDescription) {
-      if (webUrl) {
+    if ((!finalImage || !finalDescription) && webUrl) {
+      try {
         const mRes = await fetch(`https://api.microlink.io/?url=${encodeURIComponent(webUrl)}`, { signal: controller.signal });
         if (mRes.ok) {
           const mData = await mRes.json();
           if (mData.status === "success" && mData.data) {
-            finalTitle = mData.data.title || finalTitle;
-            if (mData.data.image && mData.data.image.url) {
-              finalImage = mData.data.image.url || finalImage;
-            }
-            if (mData.data.description) {
-              finalDescription = mData.data.description || finalDescription;
-            }
+            if (!finalTitle || finalTitle === config.name) finalTitle = mData.data.title || finalTitle;
+            if (!finalImage && mData.data.image && mData.data.image.url) finalImage = mData.data.image.url;
+            if (!finalDescription && mData.data.description) finalDescription = mData.data.description;
           }
         }
-      }
+      } catch (e) {}
     }
+
     clearTimeout(timeout);
   } catch (err) {
-    // Either aborted due to timeout or fetch error. In either case, degrade gracefully.
     console.error(`Edge fetch failed for ${platformKey}:`, err.message);
   }
 
-  // 4. Get the default HTML response from Netlify's static host
+  // Guaranteed fallback description — always set for every platform
+  if (!finalDescription) {
+    const kind = config.kind || "content";
+    finalDescription = `Open this ${kind.toLowerCase()} on ${config.name}. Tap to open directly in the native app, with a web fallback.`;
+  }
+
+  // 4. Get the default HTML from Netlify's static host
   const response = await context.next();
   let html = await response.text();
 
-  // 5. Inject the metadata into the raw HTML string
-  const escapeReplacement = (str) => str.replace(/\$/g, '$$$$');
+  // 5. Inject metadata
+  // Helper: escape $ so they aren't treated as regex back-references
+  const esc = (str) => str.replace(/\$/g, '$$$$');
 
-  const cleanTitle = finalTitle.replace(/"/g, '&quot;');
-  const cleanTitleStr = escapeReplacement(cleanTitle);
-  const titleTag = escapeReplacement(`<title>${cleanTitle} | Open Deep Redirect</title>`);
+  const safeTitle = finalTitle.replace(/"/g, '&quot;');
+  const safeDesc  = finalDescription.replace(/[\r\n]+/g, ' ').replace(/"/g, '&quot;');
+  const pageUrl   = request.url;
 
-  html = html.replace(/<title>.*?<\/title>/i, titleTag);
-  html = html.replace(/<meta[^>]*property="og:title"[^>]*>/i, `<meta property="og:title" content="${cleanTitleStr}" />`);
-  html = html.replace(/<meta[^>]*name="twitter:title"[^>]*>/i, `<meta name="twitter:title" content="${cleanTitleStr}" />`);
+  // <title>
+  html = html.replace(/<title>[^<]*<\/title>/i, esc(`<title>${safeTitle} | Open Deep Redirect</title>`));
 
+  // og: tags — use \s+ after <meta to avoid matching og:image:alt when targeting og:image
+  html = html.replace(/<meta\s+property="og:title"[^>]*>/i,       esc(`<meta property="og:title" content="${safeTitle}" />`));
+  html = html.replace(/<meta\s+property="og:description"[^>]*>/i, esc(`<meta property="og:description" content="${safeDesc}" />`));
+  html = html.replace(/<meta\s+property="og:url"[^>]*>/i,         esc(`<meta property="og:url" content="${pageUrl}" />`));
+  html = html.replace(/<meta\s+property="og:type"[^>]*>/i,        esc(`<meta property="og:type" content="article" />`));
+
+  // twitter: tags
+  html = html.replace(/<meta\s+name="twitter:title"[^>]*>/i,       esc(`<meta name="twitter:title" content="${safeTitle}" />`));
+  html = html.replace(/<meta\s+name="twitter:description"[^>]*>/i, esc(`<meta name="twitter:description" content="${safeDesc}" />`));
+  html = html.replace(/<meta\s+name="description"[^>]*>/i,         esc(`<meta name="description" content="${safeDesc}" />`));
+
+  // Image injection
   if (finalImage) {
-    const cleanImage = finalImage.replace(/"/g, '&quot;');
-    const cleanImageStr = escapeReplacement(cleanImage);
-    html = html.replace(/<meta[^>]*property="og:image"[^>]*>/i, `<meta property="og:image" content="${cleanImageStr}" />`);
-    html = html.replace(/<meta[^>]*name="twitter:image"[^>]*>/i, `<meta name="twitter:image" content="${cleanImageStr}" />`);
-
-    html = html.replace(/<meta[^>]*property="og:image:width"[^>]*>/ig, '');
-    html = html.replace(/<meta[^>]*property="og:image:height"[^>]*>/ig, '');
+    const safeImage = finalImage.replace(/"/g, '&quot;');
+    // Match og:image exactly — the tag in index.html is:
+    //   <meta property="og:image" content="..." />
+    // Use a tight pattern so og:image:type / og:image:alt / og:image:width are NOT touched here
+    html = html.replace(/<meta\s+property="og:image"\s+content="[^"]*"\s*\/>/i, esc(`<meta property="og:image" content="${safeImage}" />`));
+    html = html.replace(/<meta\s+name="twitter:image"\s+content="[^"]*"\s*\/>/i, esc(`<meta name="twitter:image" content="${safeImage}" />`));
+    // Update alt tags
+    html = html.replace(/<meta\s+property="og:image:alt"[^>]*>/i,  esc(`<meta property="og:image:alt" content="${safeTitle}" />`));
+    html = html.replace(/<meta\s+name="twitter:image:alt"[^>]*>/i, esc(`<meta name="twitter:image:alt" content="${safeTitle}" />`));
+    // Remove fixed dimensions — crawlers may reject mismatched sizes
+    html = html.replace(/<meta\s+property="og:image:width"[^>]*>\n?/ig, '');
+    html = html.replace(/<meta\s+property="og:image:height"[^>]*>\n?/ig, '');
   }
 
-  // Provide a smart fallback for description if the platform didn't return one
-  if (!finalDescription) {
-    // Build a descriptive fallback based on platform kind
-    const kind = config.kind || "content";
-    finalDescription = `Open this ${kind.toLowerCase()} on ${config.name}. Redirect link that opens directly in the native app with web fallback.`;
-  }
+  // 6. Return mutated HTML, preserving original response headers
+  const newHeaders = new Headers(response.headers);
+  newHeaders.set("content-type", "text/html;charset=utf-8");
 
-  // Always inject description (we now guarantee finalDescription is set)
-  const cleanDesc = finalDescription.replace(/[\r\n]+/g, ' ').replace(/"/g, '&quot;');
-  const cleanDescStr = escapeReplacement(cleanDesc);
-  html = html.replace(/<meta[^>]*name="description"[^>]*>/i, `<meta name="description" content="${cleanDescStr}" />`);
-  html = html.replace(/<meta[^>]*property="og:description"[^>]*>/i, `<meta property="og:description" content="${cleanDescStr}" />`);
-  html = html.replace(/<meta[^>]*name="twitter:description"[^>]*>/i, `<meta name="twitter:description" content="${cleanDescStr}" />`);
-
-  // 6. Return the mutated HTML
   return new Response(html, {
-    headers: { "content-type": "text/html;charset=utf-8" }
+    status: response.status,
+    headers: newHeaders,
   });
 }
 
-// Config blocks dictate what paths this function runs on
 export const config = {
   path: "/r/*"
 };
