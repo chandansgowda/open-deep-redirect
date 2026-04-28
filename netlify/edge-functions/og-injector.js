@@ -186,6 +186,14 @@ async function fetchRedditIcon(subreddit, signal) {
 }
 
 export default async function (request, context) {
+  // ── Opt-in gate ────────────────────────────────────────────────────────────
+  // Set ENABLE_OG_PREVIEW=true in your Netlify environment variables to enable
+  // rich social previews (WhatsApp, iMessage, etc.) for /r/* redirect links.
+  // If the variable is not set or is anything other than "true", this function
+  // passes through immediately and the static index.html is served as-is.
+  if (Deno.env.get("ENABLE_OG_PREVIEW") !== "true") {
+    return context.next();
+  }
   const url = new URL(request.url);
   const match = url.pathname.match(/^\/r\/([^/]+)\/(.+)$/);
   if (!match) return context.next();

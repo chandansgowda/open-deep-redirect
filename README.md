@@ -47,6 +47,11 @@ Social media crawlers (like WhatsApp, iMessage, and Twitter) do not run JavaScri
 To solve this, this project utilizes a **Netlify Edge Function** (`netlify/edge-functions/og-injector.js`). 
 Whenever a crawler fetches a `/r/*` redirect link, the edge function quickly runs the exact same metadata waterfall logic on Deno, dynamically injects the correct `<meta property="og:image">` and `<meta property="og:title">` tags into the raw HTML, and returns that HTML to the crawler immediately. This gives you rich previews on WhatsApp while maintaining essentially a "zero-backend" operational structure.
 
+> **The edge function is opt-in.** It is deployed but does nothing unless you explicitly enable it.
+> To enable rich social previews, set the environment variable `ENABLE_OG_PREVIEW=true` in your Netlify site settings:
+> **Site settings → Environment variables → Add variable → `ENABLE_OG_PREVIEW` = `true`**
+> Leave it unset (the default) and the function passes through instantly with zero overhead.
+
 ### Redirect (`/r/{platform}/{id}`)
 
 1. Shows a loading UI with the detected platform.

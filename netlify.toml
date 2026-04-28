@@ -5,6 +5,16 @@
   publish = "."
   command = ""
 
+# ── OG Preview (opt-in) ────────────────────────────────────────────────────────
+# The edge function injects real og:title / og:image / og:description into
+# /r/* redirect pages so WhatsApp, iMessage, and other crawlers show rich
+# previews when someone shares a link.
+#
+# To ENABLE: set ENABLE_OG_PREVIEW = "true" in your Netlify site's
+#   Environment Variables (Site settings → Environment variables).
+#
+# To DISABLE (default): leave the variable unset or set it to anything else.
+#   The edge function will pass through immediately with zero overhead.
 [[edge_functions]]
   path = "/r/*"
   function = "og-injector"
