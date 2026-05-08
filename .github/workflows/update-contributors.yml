@@ -1,0 +1,49 @@
+name: Update Contributors
+
+# Runs after every push to main, weekly on Monday, or on manual trigger.
+# Fetches the contributor list from the GitHub API, regenerates the avatar
+# table in README.md, and commits the result (if anything changed).
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 3 * * 1"   # Every Monday at 03:00 UTC
+  workflow_dispatch:        # Allow manual trigger from the Actions tab
+
+permissions:
+  contents: write           # Needed to push the updated README
+
+jobs:
+  update-contributors:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # Use a PAT if you need to trigger other workflows from this commit;
+          # the default GITHUB_TOKEN is fine for a simple doc update.
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Regenerate contributors table
+        run: node scripts/update-contributors.mjs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # GITHUB_REPOSITORY is already set by Actions (owner/repo)
+
+      - name: Commit & push (if README changed)
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add README.md
+          # Only commit when there is actually a diff; --quiet exits 0 = no diff
+          git diff --staged --quiet \
+            && echo "No changes to commit." \
+            || git commit -m "docs: update contributors list [skip ci]"
+          git push
