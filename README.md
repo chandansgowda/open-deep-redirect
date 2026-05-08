@@ -251,11 +251,18 @@ node scripts/update-contributors.mjs
 <table>
   <tr>
     <td align="center" valign="top" width="120">
+      <a href="https://github.com/mithun50">
+        <img src="https://avatars.githubusercontent.com/u/99024517?v=4&s=80" width="64" height="64" alt="mithun50" style="border-radius:50%" />
+        <br /><sub><b>mithun50</b></sub>
+      </a>
+      <br /><sub>🔨 23 commits</sub>
+    </td>
+    <td align="center" valign="top" width="120">
       <a href="https://github.com/chandansgowda">
         <img src="https://avatars.githubusercontent.com/u/41890434?v=4&s=80" width="64" height="64" alt="chandansgowda" style="border-radius:50%" />
         <br /><sub><b>chandansgowda</b></sub>
       </a>
-      <br /><sub>🔨 6 commits</sub>
+      <br /><sub>🔨 7 commits</sub>
     </td>
   </tr>
 </table>
