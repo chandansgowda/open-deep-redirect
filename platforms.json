@@ -400,6 +400,189 @@
       "idValidator": "^[\\w-]+$",
       "deepLink": "discord://invite/{id}",
       "webLink": "https://discord.gg/{id}"
+    },
+    "medium-post": {
+      "name": "Medium",
+      "kind": "Post",
+      "icon": "M",
+      "color": "#000000",
+      "domains": ["medium.com", "www.medium.com"],
+      "extractors": [
+        "medium\\.com/p/([a-z0-9]+)",
+        "medium\\.com/(?:@[^/]+/)?.*-([a-z0-9]+)$"
+      ],
+      "idValidator": "^[a-z0-9]+$",
+      "deepLink": "medium://p/{id}",
+      "webLink": "https://medium.com/p/{id}"
+    },
+    "figma-file": {
+      "name": "Figma",
+      "kind": "File",
+      "icon": "F",
+      "color": "#F24E1E",
+      "domains": ["figma.com", "www.figma.com"],
+      "extractors": [
+        "figma\\.com/file/([a-zA-Z0-9]+)"
+      ],
+      "idValidator": "^[a-zA-Z0-9]+$",
+      "deepLink": "figma://file/{id}",
+      "webLink": "https://www.figma.com/file/{id}"
+    },
+    "notion-page": {
+      "name": "Notion",
+      "kind": "Page",
+      "icon": "N",
+      "color": "#000000",
+      "domains": ["notion.so", "www.notion.so", "notion.site"],
+      "extractors": [
+        "notion\\.(?:so|site)/(?:[^/]+-)?([a-fA-F0-9]{32})"
+      ],
+      "idValidator": "^[a-fA-F0-9]{32}$",
+      "deepLink": "notion://www.notion.so/{id}",
+      "webLink": "https://www.notion.so/{id}"
+    },
+    "bluesky-post": {
+      "name": "Bluesky",
+      "kind": "Post",
+      "icon": "🦋",
+      "color": "#0085FF",
+      "domains": ["bsky.app"],
+      "extractors": [
+        "bsky\\.app/profile/([^/]+/post/[a-z0-9]+)"
+      ],
+      "idValidator": "^[^/]+/post/[a-z0-9]+$",
+      "deepLink": "https://bsky.app/profile/{id}",
+      "webLink": "https://bsky.app/profile/{id}"
+    },
+    "soundcloud-track": {
+      "name": "SoundCloud",
+      "kind": "Track",
+      "icon": "☁",
+      "color": "#FF3300",
+      "domains": ["soundcloud.com", "m.soundcloud.com"],
+      "extractors": [
+        "soundcloud\\.com/([^/]+/[^/?#]+)"
+      ],
+      "idValidator": "^[^/]+/[^/?#]+$",
+      "deepLink": "https://soundcloud.com/{id}",
+      "webLink": "https://soundcloud.com/{id}"
+    },
+    "dev-post": {
+      "name": "DEV Community",
+      "kind": "Post",
+      "icon": "D",
+      "color": "#0A0A0A",
+      "domains": ["dev.to"],
+      "extractors": [
+        "dev\\.to/([^/]+/[^/?#]+)"
+      ],
+      "idValidator": "^[^/]+/[^/?#]+$",
+      "deepLink": "https://dev.to/{id}",
+      "webLink": "https://dev.to/{id}"
+    },
+    "leetcode-problem": {
+      "name": "LeetCode",
+      "kind": "Problem",
+      "icon": "L",
+      "color": "#FFA116",
+      "domains": ["leetcode.com"],
+      "extractors": [
+        "leetcode\\.com/problems/([^/?#]+)"
+      ],
+      "idValidator": "^[a-z0-9-]+$",
+      "deepLink": "https://leetcode.com/problems/{id}/",
+      "webLink": "https://leetcode.com/problems/{id}/"
+    },
+    "hackerrank-challenge": {
+      "name": "HackerRank",
+      "kind": "Challenge",
+      "icon": "H",
+      "color": "#00EA64",
+      "domains": ["hackerrank.com", "www.hackerrank.com"],
+      "extractors": [
+        "hackerrank\\.com/challenges/([^/?#]+)"
+      ],
+      "idValidator": "^[a-z0-9-]+$",
+      "deepLink": "https://www.hackerrank.com/challenges/{id}",
+      "webLink": "https://www.hackerrank.com/challenges/{id}"
+    },
+    "gfg-article": {
+      "name": "GeeksforGeeks",
+      "kind": "Article",
+      "icon": "G",
+      "color": "#2F8D46",
+      "domains": ["geeksforgeeks.org", "www.geeksforgeeks.org"],
+      "extractors": [
+        "geeksforgeeks\\.org/([^/?#]+)"
+      ],
+      "idValidator": "^[a-z0-9-]+$",
+      "deepLink": "https://www.geeksforgeeks.org/{id}/",
+      "webLink": "https://www.geeksforgeeks.org/{id}/"
+    },
+    "producthunt-post": {
+      "name": "Product Hunt",
+      "kind": "Product",
+      "icon": "P",
+      "color": "#DA552F",
+      "domains": ["producthunt.com", "www.producthunt.com"],
+      "extractors": [
+        "producthunt\\.com/posts/([^/?#]+)"
+      ],
+      "idValidator": "^[a-z0-9-]+$",
+      "deepLink": "https://www.producthunt.com/posts/{id}",
+      "webLink": "https://www.producthunt.com/posts/{id}"
+    },
+    "kaggle-dataset": {
+      "name": "Kaggle",
+      "kind": "Dataset",
+      "icon": "K",
+      "color": "#20BEFF",
+      "domains": ["kaggle.com", "www.kaggle.com"],
+      "extractors": [
+        "kaggle\\.com/datasets/([^/]+/[^/?#]+)"
+      ],
+      "idValidator": "^[^/]+/[^/?#]+$",
+      "deepLink": "https://www.kaggle.com/datasets/{id}",
+      "webLink": "https://www.kaggle.com/datasets/{id}"
+    },
+    "coursera-course": {
+      "name": "Coursera",
+      "kind": "Course",
+      "icon": "C",
+      "color": "#0056D2",
+      "domains": ["coursera.org", "www.coursera.org"],
+      "extractors": [
+        "coursera\\.org/learn/([^/?#]+)"
+      ],
+      "idValidator": "^[a-z0-9-]+$",
+      "deepLink": "https://www.coursera.org/learn/{id}",
+      "webLink": "https://www.coursera.org/learn/{id}"
+    },
+    "udemy-course": {
+      "name": "Udemy",
+      "kind": "Course",
+      "icon": "U",
+      "color": "#A435F0",
+      "domains": ["udemy.com", "www.udemy.com"],
+      "extractors": [
+        "udemy\\.com/course/([^/?#]+)"
+      ],
+      "idValidator": "^[a-z0-9-]+$",
+      "deepLink": "https://www.udemy.com/course/{id}/",
+      "webLink": "https://www.udemy.com/course/{id}/"
+    },
+    "mastodon-post": {
+      "name": "Mastodon",
+      "kind": "Post",
+      "icon": "🐘",
+      "color": "#6364FF",
+      "domains": ["mastodon.social", "mastodon.world", "mas.to"],
+      "extractors": [
+        "@[^/]+/(\\d+)"
+      ],
+      "idValidator": "^\\d+$",
+      "deepLink": "https://mastodon.social/@{id}",
+      "webLink": "https://mastodon.social/@{id}"
     }
   }
 }
